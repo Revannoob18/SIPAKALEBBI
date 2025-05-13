@@ -1,272 +1,450 @@
 <template>
   <div class="admin-dashboard">
-    <h1>Dashboard Admin</h1>
+    <header class="dashboard-header">
+      <h1>Dashboard Admin</h1>
+    </header>
 
-    <div class="form-section">
-      <h2>{{ isEdit ? "Edit Pengunjung" : "Tambah Pengunjung" }}</h2>
-      <form @submit.prevent="tambahPengunjung">
-        <input type="text" v-model="form.nama" placeholder="Nama" required />
-        <input
-          type="text"
-          v-model="form.alasan"
-          placeholder="Alasan"
-          required
-        />
-        <input
-          type="text"
-          v-model="form.tujuan"
-          placeholder="Ingin Mengunjungi (opsional)"
-        />
-        <input
-          type="text"
-          v-model="form.dari_kelas"
-          placeholder="Dari Kelas (opsional)"
-        />
-        <input type="file" @change="onFileChange" accept="image/*" />
+    <main class="dashboard-content">
+      <!-- List Section -->
+      <section class="list-section">
+        <h2>Daftar Pengunjung</h2>
+        <div class="filter-section">
+          <label for="filter-date">Filter Tanggal:</label>
+          <input
+            type="date"
+            id="filter-date"
+            v-model="filterDate"
+            @change="filterPengunjung"
+          />
+          <p class="visitor-count">
+            Jumlah Pengunjung: {{ filteredPengunjungList.length }}
+          </p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Alasan</th>
+              <th>Tujuan</th>
+              <th>Kelas</th>
+              <th>Foto</th>
+              <th>Waktu</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in filteredPengunjungList" :key="p.id">
+              <td>{{ p.nama }}</td>
+              <td>{{ p.alasan }}</td>
+              <td>{{ p.tujuan }}</td>
+              <td>{{ p.kelas }}</td>
+              <td>
+                <img
+                  v-if="p.foto"
+                  :src="`http://localhost:5000${p.foto}`"
+                  alt="Foto Pengunjung"
+                  class="foto-thumbnail"
+                />
+                <span v-else>-</span>
+              </td>
+              <td>{{ new Date(p.waktu).toLocaleString() }}</td>
+              <td>
+                <button @click="prepareEdit(p)">Edit</button>
+                <button @click="hapus(p.id)">Hapus</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
-        <button type="submit">
-          {{ isEdit ? "Edit" : "Tambah Pengunjung" }}
-        </button>
-        <button type="button" @click="resetForm" v-if="isEdit">
-          Batal Edit
-        </button>
-      </form>
-    </div>
+      <!-- Form Section -->
+      <section
+        class="form-section"
+        ref="formSection"
+        :class="{ visible: formVisible }"
+      >
+        <h2>{{ isEdit ? "Edit Pengunjung" : "Tambah Pengunjung" }}</h2>
+        <form @submit.prevent="tambahPengunjung">
+          <input type="text" v-model="form.nama" placeholder="Nama" required />
+          <input
+            type="text"
+            v-model="form.alasan"
+            placeholder="Alasan"
+            required
+          />
+          <input
+            type="text"
+            v-model="form.tujuan"
+            placeholder="Ingin Mengunjungi (opsional)"
+          />
+          <input
+            type="text"
+            v-model="form.dari_kelas"
+            placeholder="Dari Kelas (opsional)"
+          />
+          <input type="file" @change="onFileChange" accept="image/*" />
 
-    <div class="list-section">
-      <h2>Daftar Pengunjung</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Nama</th>
-            <th>Alasan</th>
-            <th>Tujuan</th>
-            <th>Kelas</th>
-            <th>Foto</th>
-            <th>Waktu</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="p in pengunjungList" :key="p.id">
-            <td>{{ p.nama }}</td>
-            <td>{{ p.alasan }}</td>
-            <td>{{ p.tujuan }}</td>
-            <td>{{ p.kelas }}</td>
-            <td>
-              <img
-                v-if="p.foto"
-                :src="`http://localhost:5000${p.foto}`"
-                alt="Foto Pengunjung"
-                class="foto-thumbnail"
-              />
-              <span v-else>-</span>
-            </td>
-            <td>{{ new Date(p.waktu).toLocaleString() }}</td>
-            <td>
-              <button @click="prepareEdit(p)">Edit</button>
-              <button @click="hapus(p.id)">Hapus</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+          <div class="form-buttons">
+            <button type="submit">
+              {{ isEdit ? "Edit" : "Tambah Pengunjung" }}
+            </button>
+            <button type="button" @click="resetForm" v-if="isEdit">
+              Batal Edit
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
   </div>
 </template>
 
-<script>
+<script setup>
 import axios from "axios";
+import { useToast } from "vue-toastification";
+import { h, ref, reactive, onMounted, watch } from "vue";
 
-export default {
-  data() {
-    return {
-      pengunjungList: [],
-      form: {
-        nama: "",
-        alasan: "",
-        tujuan: "",
-        dari_kelas: "",
-      },
-      selectedFile: null,
-      isEdit: false,
-      editId: null,
-    };
-  },
-  methods: {
-    async ambilData() {
-      try {
-        const res = await axios.get("http://localhost:5000/api/pengunjung");
-        this.pengunjungList = res.data;
-      } catch (err) {
-        console.error("Gagal mengambil data pengunjung:", err);
-      }
-    },
-    onFileChange(e) {
-      this.selectedFile = e.target.files[0];
-    },
-    resetForm() {
-      this.form = {
-        nama: "",
-        alasan: "",
-        tujuan: "",
-        dari_kelas: "",
-      };
-      this.selectedFile = null;
-      this.isEdit = false;
-      this.editId = null;
-    },
-    prepareEdit(p) {
-      this.form = {
-        nama: p.nama,
-        alasan: p.alasan,
-        tujuan: p.tujuan,
-        dari_kelas: p.kelas,
-      };
-      this.editId = p.id;
-      this.isEdit = true;
-    },
-    async tambahPengunjung() {
-      // Kirim data teks dulu
-      try {
-        const res = await axios.post("http://localhost:5000/api/pengunjung", {
-          nama: this.form.nama,
-          alasan: this.form.alasan,
-          tujuan: this.form.tujuan,
-          kelas: this.form.dari_kelas,
-        });
-        const newId = res.data.id;
+// Data dan State
+const pengunjungList = ref([]);
+const filteredPengunjungList = ref([]); // Daftar pengunjung yang difilter
+const filterDate = ref(""); // Tanggal yang dipilih untuk filter
+const form = reactive({
+  nama: "",
+  alasan: "",
+  tujuan: "",
+  dari_kelas: "",
+});
+const selectedFile = ref(null);
+const isEdit = ref(false);
+const editId = ref(null);
+const formVisible = ref(false); // Kontrol visibilitas form
 
-        // Jika ada file foto, kirim ke endpoint upload
-        if (this.selectedFile) {
-          const fd = new FormData();
-          fd.append("foto", this.selectedFile);
-          fd.append("pengunjung_id", newId);
-          await axios.post("http://localhost:5000/api/upload", fd, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-        }
+// Toast untuk notifikasi
+const toast = useToast();
 
-        this.resetForm();
-        this.ambilData();
-      } catch (err) {
-        console.error("Gagal tambah/edit pengunjung:", err);
-        alert("Terjadi kesalahan saat menyimpan data.");
-      }
-    },
-    async hapus(id) {
-      try {
-        await axios.delete(`http://localhost:5000/api/pengunjung/${id}`);
-        this.ambilData();
-      } catch (err) {
-        console.error("Gagal menghapus pengunjung:", err);
-        alert("Terjadi kesalahan saat menghapus data.");
-      }
-    },
-  },
-  mounted() {
-    this.ambilData();
-  },
+// Fungsi untuk mengambil data pengunjung
+const ambilData = async () => {
+  try {
+    const res = await axios.get("http://localhost:5000/api/pengunjung");
+    pengunjungList.value = res.data;
+    filteredPengunjungList.value = res.data; // Perbarui daftar yang difilter
+    toast.success("Data pengunjung berhasil dimuat!");
+  } catch (err) {
+    console.error("Gagal mengambil data pengunjung:", err);
+    toast.error("Gagal memuat data pengunjung.");
+  }
 };
+
+// Fungsi untuk memfilter pengunjung berdasarkan tanggal
+const filterPengunjung = () => {
+  if (!filterDate.value) {
+    // Jika tidak ada tanggal yang dipilih, tampilkan semua data
+    filteredPengunjungList.value = pengunjungList.value;
+    return;
+  }
+
+  // Filter data berdasarkan tanggal
+  const selectedDate = new Date(filterDate.value).toDateString();
+  filteredPengunjungList.value = pengunjungList.value.filter((p) => {
+    const pengunjungDate = new Date(p.waktu).toDateString();
+    return pengunjungDate === selectedDate;
+  });
+};
+
+// Fungsi untuk menangani perubahan file
+const onFileChange = (e) => {
+  selectedFile.value = e.target.files[0];
+};
+
+// Fungsi untuk mereset form
+const resetForm = () => {
+  form.nama = "";
+  form.alasan = "";
+  form.tujuan = "";
+  form.dari_kelas = "";
+  selectedFile.value = null;
+  isEdit.value = false;
+  editId.value = null;
+};
+
+// Fungsi untuk mempersiapkan mode edit
+const prepareEdit = (p) => {
+  form.nama = p.nama;
+  form.alasan = p.alasan;
+  form.tujuan = p.tujuan;
+  form.dari_kelas = p.kelas;
+  editId.value = p.id; // Simpan ID data yang akan diedit
+  isEdit.value = true; // Aktifkan mode edit
+};
+
+// Fungsi untuk menambah atau mengedit pengunjung
+const tambahPengunjung = async () => {
+  try {
+    if (isEdit.value) {
+      // Mode Edit: Perbarui data pengunjung
+      if (!editId.value) {
+        toast.error("ID pengunjung tidak valid.");
+        return;
+      }
+
+      await axios.put(`http://localhost:5000/api/pengunjung/${editId.value}`, {
+        nama: form.nama,
+        alasan: form.alasan,
+        tujuan: form.tujuan,
+        kelas: form.dari_kelas,
+      });
+
+      if (selectedFile.value) {
+        const fd = new FormData();
+        fd.append("foto", selectedFile.value);
+        fd.append("pengunjung_id", editId.value);
+        await axios.post("http://localhost:5000/api/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      toast.success("Data pengunjung berhasil diperbarui!");
+    } else {
+      // Mode Tambah: Tambahkan data pengunjung baru
+      const res = await axios.post("http://localhost:5000/api/pengunjung", {
+        nama: form.nama,
+        alasan: form.alasan,
+        tujuan: form.tujuan,
+        kelas: form.dari_kelas,
+      });
+      const newId = res.data.id;
+
+      if (selectedFile.value) {
+        const fd = new FormData();
+        fd.append("foto", selectedFile.value);
+        fd.append("pengunjung_id", newId);
+        await axios.post("http://localhost:5000/api/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      toast.success("Pengunjung berhasil ditambahkan!");
+    }
+
+    // Reset form dan ambil data terbaru
+    resetForm();
+    ambilData();
+  } catch (err) {
+    console.error("Gagal tambah/edit pengunjung:", err);
+    toast.error("Terjadi kesalahan saat menyimpan data.");
+  }
+};
+
+// Fungsi untuk menghapus pengunjung
+const hapus = async (id) => {
+  toast(
+    () =>
+      h("div", { style: { display: "flex", flexDirection: "column" } }, [
+        h("p", "Apakah Anda yakin ingin menghapus data ini?"),
+        h(
+          "div",
+          {
+            style: {
+              display: "flex",
+              justifyContent: "space-between",
+              marginTop: "10px",
+            },
+          },
+          [
+            h(
+              "button",
+              {
+                style: {
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                },
+                onClick: async () => {
+                  try {
+                    await axios.delete(
+                      `http://localhost:5000/api/pengunjung/${id}`
+                    );
+                    ambilData();
+                    toast.success("Pengunjung berhasil dihapus!");
+                  } catch (err) {
+                    console.error("Gagal menghapus pengunjung:", err);
+                    toast.error("Terjadi kesalahan saat menghapus data.");
+                  }
+                },
+              },
+              "Ya"
+            ),
+            h(
+              "button",
+              {
+                style: {
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                },
+                onClick: () => {
+                  toast.dismiss();
+                },
+              },
+              "Tidak"
+            ),
+          ]
+        ),
+      ]),
+    {
+      timeout: false,
+    }
+  );
+};
+
+// IntersectionObserver untuk mendeteksi form
+onMounted(() => {
+  ambilData();
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          formVisible.value = true;
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
+
+  observer.observe(document.querySelector(".form-section"));
+});
+
+// Panggil filterPengunjung setiap kali data pengunjung diperbarui
+watch(pengunjungList, () => {
+  filterPengunjung();
+});
 </script>
 
 <style scoped>
-/* Animasi masuk lembut */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* Global Layout */
 .admin-dashboard {
-  max-width: 1100px;
-  margin: 2rem auto;
-  padding: 2rem;
-  background: linear-gradient(to bottom right, #f0f4ff, #ffffff);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-  animation: fadeInUp 0.6s ease-out;
-  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #ffffff; /* Latar belakang tetap putih */
+  font-family: "Poppins", sans-serif; /* Font modern */
+  color: #2f318b; /* Warna teks utama */
 }
 
-/* Judul utama */
-.admin-dashboard h1 {
-  text-align: center;
-  font-size: 2.4rem;
-  color: #2a2a2a;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-}
-
-/* Seksi form & daftar */
-.form-section,
-.list-section {
-  background: #ffffff;
+/* Header */
+.dashboard-header {
+  background-color: #2f318b; /* Warna biru gelap */
+  color: white;
   padding: 1.5rem;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 2rem;
-  transition: box-shadow 0.3s ease;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Bayangan lembut */
 }
 
-.form-section:hover,
-.list-section:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+.dashboard-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
 }
 
-.form-section h2,
-.list-section h2 {
-  font-size: 1.6rem;
-  margin-bottom: 1rem;
-  color: #333;
-  border-bottom: 2px solid #007bff;
-  padding-bottom: 0.5rem;
-}
-
-/* Grid Form */
-.form-section form {
+/* Main Content */
+.dashboard-content {
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+/* Form Section */
+.form-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Bayangan lembut */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.form-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #2f318b; /* Warna biru gelap */
+}
+
+.form-section form {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
 }
 
-/* Input field */
-.form-section input[type="text"],
-.form-section input[type="file"] {
-  padding: 0.7rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 15px;
-  transition: border-color 0.3s ease;
+.form-section input {
+  padding: 0.8rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .form-section input:focus {
-  border-color: #007bff;
+  border-color: #2f318b; /* Warna biru gelap */
+  box-shadow: 0 0 8px rgba(47, 49, 139, 0.25);
   outline: none;
 }
 
-/* Tombol */
-.form-section button {
-  padding: 0.7rem 1.4rem;
-  background-color: #007bff;
-  color: white;
+.form-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-buttons button {
+  padding: 0.8rem 1.2rem;
   border: none;
-  border-radius: 6px;
-  font-weight: 500;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
-.form-section button[type="button"] {
+.form-buttons button[type="submit"] {
+  background-color: #2f318b; /* Warna biru gelap */
+  color: white;
+}
+
+.form-buttons button[type="submit"]:hover {
+  background-color: #1e206b; /* Warna biru lebih gelap */
+  transform: scale(1.05);
+}
+
+.form-buttons button[type="button"] {
   background-color: #6c757d;
+  color: white;
 }
 
-.form-section button:hover {
-  background-color: #0056b3;
+.form-buttons button[type="button"]:hover {
+  background-color: #5a6268;
+  transform: scale(1.05);
+}
+
+/* List Section */
+.list-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Bayangan lembut */
+}
+
+.list-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #2f318b; /* Warna biru gelap */
 }
 
 .list-section table {
@@ -278,63 +456,76 @@ export default {
 
 .list-section th,
 .list-section td {
-  padding: 0.75rem 1rem;
+  padding: 1rem;
+  border: 1px solid #dee2e6;
   text-align: left;
-  border-bottom: 1px solid #eee;
 }
 
 .list-section th {
-  background-color: #007bff;
+  background-color: #2f318b; /* Warna biru gelap */
   color: white;
   font-weight: 600;
-  font-size: 15px;
 }
 
-.list-section tr:nth-child(even) td {
+.list-section tr:nth-child(even) {
   background-color: #f8f9fa;
 }
 
-.list-section tr:hover td {
+.list-section tr:hover {
   background-color: #eaf4ff;
+  transition: background-color 0.3s ease;
 }
 
 .foto-thumbnail {
   width: 50px;
   height: 50px;
   object-fit: cover;
-  border-radius: 5px;
-  border: 1px solid #ccc;
+  border-radius: 8px;
+  transition: transform 0.3s ease;
 }
 
-.list-section button {
-  padding: 0.4rem 0.9rem;
-  margin: 0 0.2rem;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
+.foto-thumbnail:hover {
+  transform: scale(1.1);
 }
 
-.list-section button:hover {
-  background-color: #c82333;
+/* Filter Section */
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filter-section label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2f318b;
+}
+
+.filter-section input {
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.filter-section input:focus {
+  border-color: #2f318b;
+  box-shadow: 0 0 8px rgba(47, 49, 139, 0.25);
+  outline: none;
+}
+
+.visitor-count {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #2f318b;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .form-section form {
+  .dashboard-content {
     grid-template-columns: 1fr;
-  }
-
-  .list-section th,
-  .list-section td {
-    padding: 0.6rem;
-  }
-
-  .admin-dashboard {
-    padding: 1.2rem;
   }
 }
 </style>

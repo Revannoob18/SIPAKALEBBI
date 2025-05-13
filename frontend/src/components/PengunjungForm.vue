@@ -15,7 +15,6 @@
 
         <label>Ingin Mengunjungi (opsional)</label>
         <input type="text" v-model="form.tujuan" class="animate-focus" />
-
         <label>Dari Kelas (opsional)</label>
         <input type="text" v-model="form.kelas" class="animate-focus" />
 

@@ -20,7 +20,6 @@
         >
           Ambil Foto & Simpan
         </button>
-        <!-- Spinner Loading -->
         <div v-if="scanning" class="overlay">
           <div class="spinner"></div>
           <p>Memindai wajah, mohon tunggu...</p>
@@ -31,11 +30,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useToast } from 'vue-toastification';
-import * as faceapi from 'face-api.js';
-import axios from 'axios';
+import { ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useToast } from "vue-toastification";
+import * as faceapi from "face-api.js";
+import axios from "axios";
 
 const route = useRoute();
 const router = useRouter();
@@ -55,17 +54,17 @@ onMounted(async () => {
 async function initCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user' },
+      video: { facingMode: "user" },
     });
     video.value.srcObject = stream;
   } catch (error) {
-    console.error('Gagal mengakses kamera:', error);
-    toast.error('Tidak dapat mengakses kamera.', { timeout: 3000 });
+    console.error("Gagal mengakses kamera:", error);
+    toast.error("Tidak dapat mengakses kamera.", { timeout: 3000 });
   }
 }
 
 async function loadModels() {
-  const MODEL_URL = 'http://localhost:5000/models';
+  const MODEL_URL = "http://localhost:5000/models";
   try {
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -73,8 +72,8 @@ async function loadModels() {
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
   } catch (error) {
-    console.error('Gagal memuat model:', error);
-    toast.error('Gagal memuat model deteksi wajah.', { timeout: 3000 });
+    console.error("Gagal memuat model:", error);
+    toast.error("Gagal memuat model deteksi wajah.", { timeout: 3000 });
   } finally {
     loadingModels.value = false;
   }
@@ -82,7 +81,7 @@ async function loadModels() {
 
 async function captureFace() {
   if (loadingModels.value) {
-    toast.info('Model masih dimuat, tunggu sebentar…', { timeout: 2000 });
+    toast.info("Model masih dimuat, tunggu sebentar…", { timeout: 2000 });
     return;
   }
 
@@ -98,21 +97,25 @@ async function captureFace() {
     );
 
     if (detection) {
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = video.value.videoWidth;
       canvas.height = video.value.videoHeight;
-      canvas.getContext('2d').drawImage(video.value, 0, 0);
-      const imageBase64 = canvas.toDataURL('image/jpeg');
+      canvas.getContext("2d").drawImage(video.value, 0, 0);
+      const imageBase64 = canvas.toDataURL("image/jpeg");
       await uploadFace(imageBase64);
     } else {
       scanning.value = false;
-      toast.error('Wajah tidak terdeteksi. Memuat ulang halaman…', { timeout: 2000 });
+      toast.error("Wajah tidak terdeteksi. Memuat ulang halaman…", {
+        timeout: 2000,
+      });
       setTimeout(() => window.location.reload(), 2000);
     }
   } catch (error) {
     scanning.value = false;
-    console.error('Gagal mendeteksi wajah:', error);
-    toast.error('Gagal mendeteksi wajah. Memuat ulang halaman…', { timeout: 2000 });
+    console.error("Gagal mendeteksi wajah:", error);
+    toast.error("Gagal mendeteksi wajah. Memuat ulang halaman…", {
+      timeout: 2000,
+    });
     setTimeout(() => window.location.reload(), 2000);
   }
 }
@@ -121,25 +124,27 @@ async function uploadFace(imageBase64) {
   try {
     const blob = dataURLtoBlob(imageBase64);
     const formData = new FormData();
-    formData.append('image', blob, 'face.jpg');
-    formData.append('pengunjung_id', pengunjungId.value);
+    formData.append("image", blob, "face.jpg");
+    formData.append("pengunjung_id", pengunjungId.value);
 
-    await axios.post('http://localhost:5000/api/upload-face', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    await axios.post("http://localhost:5000/api/upload-face", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
 
-    toast.success('Wajah berhasil disimpan!', { timeout: 3000 });
-    router.push('/sukses');
+    toast.success("Wajah berhasil disimpan!", { timeout: 3000 });
+    router.push("/sukses");
   } catch (error) {
     scanning.value = false;
-    console.error('Gagal upload wajah:', error.response?.data || error.message);
-    toast.error('Gagal mengunggah wajah. Memuat ulang halaman…', { timeout: 2000 });
+    console.error("Gagal upload wajah:", error.response?.data || error.message);
+    toast.error("Gagal mengunggah wajah. Memuat ulang halaman…", {
+      timeout: 2000,
+    });
     setTimeout(() => window.location.reload(), 2000);
   }
 }
 
 function dataURLtoBlob(dataURL) {
-  const arr = dataURL.split(',');
+  const arr = dataURL.split(",");
   const mime = arr[0].match(/:(.*?);/)[1];
   const bstr = atob(arr[1]);
   let n = bstr.length;
@@ -152,23 +157,22 @@ function dataURLtoBlob(dataURL) {
 </script>
 
 <style scoped>
-/* Latar belakang gradasi lebih smooth */
+/* Latar belakang dengan gradasi dinamis */
 .scan-page {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #2f318b, #f8b50e);
-  background-size: 400% 400%;
-  animation: bgMove 20s ease infinite;
+  background: linear-gradient(135deg, #2f318b, #ffffff);
+  background-size: 200% 200%;
+  animation: gradientMove 10s ease infinite;
   overflow: hidden;
   padding: 20px;
   box-sizing: border-box;
   color: white;
 }
 
-/* Animasi latar lebih halus dan terus bergerak */
-@keyframes bgMove {
+@keyframes gradientMove {
   0% {
     background-position: 0% 50%;
   }
@@ -180,37 +184,36 @@ function dataURLtoBlob(dataURL) {
   }
 }
 
-/* Kontainer Scan transparan */
+/* Kontainer utama dengan efek kaca */
 .scan-container {
-  background: rgba(255, 255, 255, 0.15); /* transparan elegan */
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
   border-radius: 20px;
-  padding: 2.5rem;
+  padding: 3rem;
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  transition: all 0.5s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .scan-container:hover {
   transform: translateY(-10px);
-  box-shadow: 0 12px 45px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
 }
 
-/* Judul */
+/* Judul dengan efek animasi */
 h1.title {
   color: #ffffff;
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 2.8rem;
+  font-weight: bold;
   margin-bottom: 2rem;
-  text-shadow: 1px 1px 10px rgba(0, 0, 0, 0.3);
-  animation: fadeDown 2s ease forwards;
+  text-shadow: 2px 2px 15px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 1.5s ease forwards;
 }
 
-/* Efek fade lembut untuk judul */
-@keyframes fadeDown {
+@keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(-20px);
@@ -221,49 +224,88 @@ h1.title {
   }
 }
 
-/* Wadah video wajah */
+/* Wadah video dengan desain modern */
 .video-container {
   margin: 20px 0;
-  border-radius: 20px;
+  border-radius: 15px;
   overflow: hidden;
   position: relative;
   width: 100%;
-  height: 300px;
-  background: rgba(47, 49, 139, 0.3); /* sedikit biru transparan */
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(5px);
+  height: 350px;
+  background: rgba(47, 49, 139, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Video wajahnya */
 .video-container video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 20px;
-  filter: brightness(1.1) contrast(1.1); /* sedikit dipoles agar "menyatu" */
+  border-radius: 15px;
+  filter: brightness(1.2) contrast(1.1);
 }
 
-/* Tombol scan */
+/* Tombol dengan efek interaktif */
 .scan-button {
   margin-top: 20px;
-  padding: 12px 30px;
-  background: #f8b50e;
-  color: white;
-  font-size: 1.2rem;
+  padding: 15px 40px;
+  background: linear-gradient(135deg, #ffffff, #2f318b);
+  color: #2f318b;
+  font-size: 1.3rem;
+  font-weight: bold;
   border: none;
-  border-radius: 12px;
+  border-radius: 25px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .scan-button:hover {
-  background: #ffca3a;
-  transform: scale(1.08);
+  background: linear-gradient(135deg, #2f318b, #ffffff);
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .scan-button:active {
-  transform: scale(0.98);
+  transform: scale(0.95);
+}
+
+/* Spinner overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(47, 49, 139, 0.9);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.overlay p {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: center;
 }
 
 /* Responsif */
@@ -274,47 +316,16 @@ h1.title {
   }
 
   .video-container {
-    height: 220px;
+    height: 250px;
   }
 
   h1.title {
     font-size: 2rem;
   }
-}
 
-/* Spinner overlay */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.8);
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid #ccc;
-  border-top-color: #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+  .scan-button {
+    font-size: 1.1rem;
+    padding: 12px 30px;
   }
-}
-
-.overlay p {
-  font-weight: bold;
-  color: #333;
 }
 </style>

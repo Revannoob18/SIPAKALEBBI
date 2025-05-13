@@ -111,6 +111,37 @@ app.get("/api/pengunjung/:id", (req, res) => {
   });
 });
 
+// =============================
+// ENDPOINT: UPDATE PENGUNJUNG
+// =============================
+app.put("/api/pengunjung/:id", (req, res) => {
+  const { id } = req.params;
+  const { nama, alasan, tujuan, kelas } = req.body;
+
+  if (!nama || !alasan || !tujuan || !kelas) {
+    return res.status(400).json({ message: "Semua field wajib diisi." });
+  }
+
+  const sql = `
+    UPDATE pengunjung 
+    SET nama = ?, alasan = ?, tujuan = ?, kelas = ? 
+    WHERE id = ?
+  `;
+
+  db.query(sql, [nama, alasan, tujuan, kelas, id], (err, result) => {
+    if (err) {
+      console.error("❌ Gagal memperbarui data pengunjung:", err);
+      return res.status(500).json({ message: "Gagal memperbarui data." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Data tidak ditemukan." });
+    }
+
+    res.json({ message: "Data pengunjung berhasil diperbarui." });
+  });
+});
+
 // ==============================
 // ENDPOINT: HAPUS PENGUNJUNG
 // ==============================
@@ -141,8 +172,48 @@ app.use("/api", uploadFaceRouter)
 // ==============================
 // ENDPOINT: LOGIN ADMIN
 // ==============================
-const adminRoutes = require('./routes/admin');
-app.use('/api/admin', adminRoutes);
+const jwt = require("jsonwebtoken");
+
+const SECRET_KEY = "your_secret_key"; // Ganti dengan kunci rahasia Anda
+
+// Endpoint login admin
+app.post("/api/admin/login", (req, res) => {
+  const { username, password } = req.body;
+
+  // Query untuk memeriksa username dan password di database
+  const sql = "SELECT * FROM admin WHERE nama = ? AND password = ?";
+  db.query(sql, [username, password], (err, results) => {
+    if (err) {
+      console.error("❌ Error saat login:", err);
+      return res.status(500).json({ message: "Terjadi kesalahan server." });
+    }
+
+    if (results.length === 0) {
+      return res.status(401).json({ message: "Username atau password salah." });
+    }
+
+    // Jika login berhasil, buat token JWT
+    const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "1h" });
+    res.json({ token });
+  });
+});
+
+// Middleware untuk memverifikasi token
+const authenticateToken = (req, res, next) => {
+  const token = req.headers["authorization"];
+  if (!token) return res.status(403).json({ message: "Token tidak ditemukan." });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ message: "Token tidak valid." });
+    req.user = user;
+    next();
+  });
+};
+
+// Contoh endpoint yang dilindungi
+app.get("/api/admin/protected", authenticateToken, (req, res) => {
+  res.json({ message: "Ini adalah data rahasia yang hanya bisa diakses oleh admin." });
+});
 
 // ==============================
 // JALANKAN SERVER

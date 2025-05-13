@@ -9,6 +9,12 @@ import Sukses from '@/views/Sukses.vue';
 import LoginAdmin from '@/components/LoginAdmin.vue';
 import AdminDashboard from '@/views/AdminDashboard.vue';
 
+// Fungsi untuk memeriksa autentikasi
+const isAuthenticated = () => {
+  // Periksa apakah token login tersimpan di localStorage
+  return !!localStorage.getItem('authToken');
+};
+
 const routes = [
   {
     path: '/',
@@ -33,7 +39,16 @@ const routes = [
   {
     path: '/admin/dashboard',
     name: 'AdminDashboard',
-    component: AdminDashboard
+    component: AdminDashboard,
+    beforeEnter: (to, from, next) => {
+      if (!isAuthenticated()) {
+        // Jika belum login, arahkan ke halaman login
+        next('/admin');
+      } else {
+        // Jika sudah login, izinkan akses
+        next();
+      }
+    }
   }
 ];
 
