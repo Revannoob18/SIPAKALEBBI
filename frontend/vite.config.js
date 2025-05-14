@@ -12,5 +12,5 @@ export default defineConfig({
   build: {
     outDir: 'dist', // Output build akan berada di folder frontend/dist
   },
-  base: '/SIPAKALEBBI/', // Ganti <repository-name> dengan nama repository GitHub Anda
+  base: './',
 });
