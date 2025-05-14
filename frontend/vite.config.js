@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   resolve: {
     alias: {
@@ -12,5 +12,5 @@ export default defineConfig({
   build: {
     outDir: 'dist', // Output build akan berada di folder frontend/dist
   },
-  base: './',
-});
+  base: mode === 'production' ? '/SIPAKALEBBI/' : '/', // Gunakan base '/sipakalebbi/' hanya untuk production
+}));
