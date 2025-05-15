@@ -12,5 +12,5 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist', // Output build akan berada di folder frontend/dist
   },
-  base: mode === 'production' ? '/SIPAKALEBBI/' : '/', // Gunakan base '/sipakalebbi/' hanya untuk production
+  base: mode === 'production' ? '/SIPAKALEBBI/' : '/', // Gunakan base '/SIPAKALEBBI/' hanya untuk production
 }));
