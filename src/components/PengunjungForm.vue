@@ -88,7 +88,7 @@ html, body {
 
 .form-page {
   min-height: 100vh;
-  background: url("/images/background.jpg") no-repeat center center;
+  background: url("/SIPAKALEBBI/images/background.jpg") no-repeat center center;
   background-size: cover;
   display: flex;
   justify-content: center;
