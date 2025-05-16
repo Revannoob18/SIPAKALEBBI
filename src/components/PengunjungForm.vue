@@ -99,7 +99,7 @@ html, body {
 
 .form-container {
   background: rgba(255, 255, 255, 0.75);
-  padding: 0.7rem;
+  padding: 0.4rem 0.7rem 0.7rem 0.7rem;
   max-width: 340px;
   width: 95%;
   border-radius: 16px;
@@ -107,13 +107,13 @@ html, body {
   backdrop-filter: blur(6px);
   font-family: "Segoe UI", sans-serif;
   margin: 0 auto;
-  box-sizing: border-box;      /* Tambahkan ini */
-  overflow: hidden;            /* Tambahkan ini */
+  box-sizing: border-box;      
+  overflow: hidden;            
 }
 
 label {
   display: block;
-  margin-top: 1rem;
+  margin-top: 0.6rem; 
   font-weight: bold;
   color: #1976d2;
 }
@@ -122,7 +122,7 @@ input,
 textarea {
   width: 100%;
   box-sizing: border-box;      /* Tambahkan ini */
-  padding: 0.75rem;
+  padding: 0.5rem;
   margin-top: 0.3rem;
   border: 1px solid #90caf9;
   border-radius: 10px;
