@@ -3,20 +3,34 @@
     <div class="form-container animate__animated animate__fadeInUp">
       <h1>Buku Tamu SMAN 1 BONE</h1>
       <form @submit.prevent="handleSubmit">
-        <label>Nama Pengunjung*</label>
+        <label>Nama Tamu*</label>
         <input type="text" v-model="form.nama" required class="animate-focus" />
 
-        <label>Alasan Berkunjung*</label>
-        <textarea
-          v-model="form.alasan"
+        <label>No.Hp*</label>
+        <input type="text" v-model="form.hp" required class="animate-focus" />
+
+        <label>Asal Instansi*</label>
+        <input
+          type="text"
+          v-model="form.instansi"
           required
           class="animate-focus"
-        ></textarea>
+        />
 
-        <label>Ingin Mengunjungi (opsional)</label>
-        <input type="text" v-model="form.tujuan" class="animate-focus" />
-        <label>Dari Kelas (opsional)</label>
-        <input type="text" v-model="form.kelas" class="animate-focus" />
+        <label>Yang Ingin Ditemui*</label>
+        <input
+          type="text"
+          v-model="form.tujuan"
+          required
+          class="animate-focus"
+        />
+        <label>Keperluan*</label>
+        <input
+          type="text"
+          v-model="form.keperluan"
+          required
+          class="animate-focus"
+        />
 
         <button
           type="submit"
@@ -37,9 +51,10 @@ export default {
     return {
       form: {
         nama: "",
-        alasan: "",
+        hp: "",
+        instansi: "",
         tujuan: "",
-        kelas: "",
+        keperluan: "",
       },
     };
   },
@@ -48,9 +63,10 @@ export default {
       try {
         const formData = new FormData();
         formData.append("nama", this.form.nama);
-        formData.append("alasan", this.form.alasan);
+        formData.append("hp", this.form.hp);
+        formData.append("instansi", this.form.instansi);
         formData.append("tujuan", this.form.tujuan);
-        formData.append("kelas", this.form.kelas);
+        formData.append("keperluan", this.form.keperluan);
 
         const response = await axios.post(
           "http://localhost:5000/api/pengunjung",
@@ -80,7 +96,8 @@ export default {
 <style scoped>
 @import "https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css";
 
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -100,10 +117,10 @@ html, body {
 .form-container {
   background: rgba(255, 255, 255, 0.82);
   padding: 1rem 1.2rem;
-  max-width: 520px;      
-  min-width: 340px;      
-  min-height: 360px;
-  max-height: 430px;
+  max-width: 520px;
+  min-width: 340px;
+  min-height: 400px;
+  max-height: 480px;
   width: 98%;
   border-radius: 16px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
@@ -119,7 +136,7 @@ html, body {
 
 label {
   display: block;
-  margin-top: 0.6rem; 
+  margin-top: 0.6rem;
   font-weight: bold;
   color: #1976d2;
 }
@@ -127,7 +144,7 @@ label {
 input,
 textarea {
   width: 100%;
-  box-sizing: border-box;      /* Tambahkan ini */
+  box-sizing: border-box; /* Tambahkan ini */
   padding: 0.5rem;
   margin-top: 0.3rem;
   border: 1px solid #90caf9;

@@ -50,16 +50,16 @@ app.post(
   "/api/pengunjung",
   upload.none(),   // ← multer akan parse semua field non-file di req.body
   (req, res) => {
-    const { nama, alasan, tujuan, kelas } = req.body;
-    if (!nama || !alasan || !tujuan || !kelas) {
+    const { nama, hp, instansi, tujuan, keperluan } = req.body;
+    if (!nama || !hp || !instansi || !tujuan || !keperluan) {
       return res.status(400).json({ message: "Semua field wajib diisi." });
     }
     const waktu = new Date();
     const sql =
-      "INSERT INTO pengunjung (nama, alasan, tujuan, kelas, waktu) VALUES (?, ?, ?, ?, ?)";
+      "INSERT INTO pengunjung (nama, hp, instansi, tujuan, keperluan, waktu) VALUES (?, ?, ?, ?, ?, ?)";
     db.query(
       sql,
-      [nama, alasan, tujuan, kelas, waktu],
+      [nama, hp, instansi, tujuan, keperluan, waktu],
       (err, result) => {
         if (err) {
           console.error("❌ Gagal menyimpan pengunjung:", err);
@@ -77,7 +77,7 @@ app.post(
 app.get("/api/pengunjung", (req, res) => {
   const sql = `
     SELECT 
-      p.id, p.nama, p.alasan, p.tujuan, p.kelas, p.waktu,
+      p.id, p.nama, p.hp, p.instansi, p.tujuan, p.keperluan, p.waktu,
       w.file_foto AS foto, w.waktu AS waktu_foto
     FROM pengunjung p
     LEFT JOIN wajah_pengunjung w
@@ -116,19 +116,19 @@ app.get("/api/pengunjung/:id", (req, res) => {
 // =============================
 app.put("/api/pengunjung/:id", (req, res) => {
   const { id } = req.params;
-  const { nama, alasan, tujuan, kelas } = req.body;
+  const { nama, hp, instansi, tujuan, keperluan } = req.body;
 
-  if (!nama || !alasan || !tujuan || !kelas) {
+  if (!nama || !hp || !instansi || !tujuan || !keperluan) {
     return res.status(400).json({ message: "Semua field wajib diisi." });
   }
 
   const sql = `
     UPDATE pengunjung 
-    SET nama = ?, alasan = ?, tujuan = ?, kelas = ? 
+    SET nama = ?, hp = ?, instansi= ?, tujuan = ?, keperluan = ? 
     WHERE id = ?
   `;
 
-  db.query(sql, [nama, alasan, tujuan, kelas, id], (err, result) => {
+  db.query(sql, [nama, hp, instansi, tujuan, keperluan, id], (err, result) => {
     if (err) {
       console.error("❌ Gagal memperbarui data pengunjung:", err);
       return res.status(500).json({ message: "Gagal memperbarui data." });

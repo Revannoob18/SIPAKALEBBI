@@ -1,14 +1,14 @@
 const db = require('../config/database');
 
 exports.tambahPengunjung = (req, res) => {
-  const { nama, alasan, tujuan, kelas } = req.body;
+  const { nama, hp, instansi, tujuan, keperluan } = req.body;
 
   const query = `
-    INSERT INTO pengunjung (nama, alasan, tujuan, kelas)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO pengunjung (nama, hp, instansi, tujuan, keperluan)
+    VALUES (?, ?, ?, ?, ?) 
   `;
 
-  db.query(query, [nama, alasan, tujuan, kelas], (err, result) => {
+  db.query(query, [nama, hp, instasni, tujuan, keperluan], (err, result) => {
     if (err) {
       console.error("Gagal menambah pengunjung:", err);
       return res.status(500).json({ message: 'Gagal menambah pengunjung' });

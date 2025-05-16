@@ -29,15 +29,15 @@ router.get("/", (req, res) => {
 
 // POST tambah pengunjung
 router.post("/", upload.none(), (req, res) => {
-  const { nama, alasan, tujuan, kelas } = req.body;
+  const { nama, hp, instansi, tujuan, keperluan } = req.body;
   const waktu = new Date();
 
   if (!nama) {
     return res.status(400).json({ error: "Field 'nama' wajib diisi." });
   }
 
-  const sql = "INSERT INTO pengunjung (nama, alasan, tujuan, kelas, waktu) VALUES (?, ?, ?, ?, ?)";
-  db.query(sql, [nama, alasan, tujuan, kelas, waktu], (err, result) => {
+  const sql = "INSERT INTO pengunjung (nama, hp, instansi, tujuan, keperluan, waktu) VALUES (?, ?, ?, ?, ?, ?)";
+  db.query(sql, [nama, hp, instansi, tujuan, keperluan, waktu], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Pengunjung ditambahkan", id: result.insertId });
   });
@@ -58,8 +58,8 @@ router.patch("/:id", upload.none(), (req, res) => {
   const { id } = req.params;
   const { nama, alasan, tujuan, kelas } = req.body;
 
-  const sql = "UPDATE pengunjung SET nama = ?, alasan = ?, tujuan = ?, kelas = ? WHERE id = ?";
-  db.query(sql, [nama, alasan, tujuan, kelas, id], (err) => {
+  const sql = "UPDATE pengunjung SET nama = ?, hp = ?, instansi = ?, tujuan = ?, keperluan=?, WHERE id = ?";
+  db.query(sql, [nama, hp, instansi, tujuan, keperluan, id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Data pengunjung diperbarui" });
   });

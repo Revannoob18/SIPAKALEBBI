@@ -23,10 +23,11 @@
         <table>
           <thead>
             <tr>
-              <th>Nama</th>
-              <th>Alasan</th>
-              <th>Tujuan</th>
-              <th>Kelas</th>
+              <th>Nama Tamu</th>
+              <th>No. HP</th>
+              <th>Asal Instansi</th>
+              <th>Yang Ingin Ditemui</th>
+              <th>Keperluan</th>
               <th>Foto</th>
               <th>Waktu</th>
               <th>Aksi</th>
@@ -35,9 +36,10 @@
           <tbody>
             <tr v-for="p in filteredPengunjungList" :key="p.id">
               <td>{{ p.nama }}</td>
-              <td>{{ p.alasan }}</td>
+              <td>{{ p.hp }}</td>
+              <td>{{ p.instansi }}</td>
               <td>{{ p.tujuan }}</td>
-              <td>{{ p.kelas }}</td>
+              <td>{{ p.keperluan }}</td>
               <td>
                 <img
                   v-if="p.foto"
@@ -65,22 +67,30 @@
       >
         <h2>{{ isEdit ? "Edit Pengunjung" : "Tambah Pengunjung" }}</h2>
         <form @submit.prevent="tambahPengunjung">
-          <input type="text" v-model="form.nama" placeholder="Nama" required />
           <input
             type="text"
-            v-model="form.alasan"
-            placeholder="Alasan"
+            v-model="form.nama"
+            placeholder="Nama Tamu"
+            required
+          />
+          <input type="text" v-model="form.hp" placeholder="No. HP" required />
+          <input
+            type="text"
+            v-model="form.instansi"
+            placeholder="Asal Instansi"
             required
           />
           <input
             type="text"
             v-model="form.tujuan"
-            placeholder="Ingin Mengunjungi (opsional)"
+            placeholder="Yang Ingin Ditemui"
+            required
           />
           <input
             type="text"
-            v-model="form.dari_kelas"
-            placeholder="Dari Kelas (opsional)"
+            v-model="form.keperluan"
+            placeholder="Keperluan"
+            required
           />
           <input type="file" @change="onFileChange" accept="image/*" />
 
@@ -109,9 +119,10 @@ const filteredPengunjungList = ref([]); // Daftar pengunjung yang difilter
 const filterDate = ref(""); // Tanggal yang dipilih untuk filter
 const form = reactive({
   nama: "",
-  alasan: "",
+  hp: "",
+  instansi: "",
   tujuan: "",
-  dari_kelas: "",
+  keperluan: "",
 });
 const selectedFile = ref(null);
 const isEdit = ref(false);
@@ -158,9 +169,10 @@ const onFileChange = (e) => {
 // Fungsi untuk mereset form
 const resetForm = () => {
   form.nama = "";
-  form.alasan = "";
+  form.hp = "";
+  form.instansi = "";
   form.tujuan = "";
-  form.dari_kelas = "";
+  form.keperluan = "";
   selectedFile.value = null;
   isEdit.value = false;
   editId.value = null;
@@ -169,11 +181,12 @@ const resetForm = () => {
 // Fungsi untuk mempersiapkan mode edit
 const prepareEdit = (p) => {
   form.nama = p.nama;
-  form.alasan = p.alasan;
+  form.hp = p.hp;
+  form.instansi = p.instansi;
   form.tujuan = p.tujuan;
-  form.dari_kelas = p.kelas;
-  editId.value = p.id; // Simpan ID data yang akan diedit
-  isEdit.value = true; // Aktifkan mode edit
+  form.keperluan = p.keperluan;
+  editId.value = p.id;
+  isEdit.value = true;
 };
 
 // Fungsi untuk menambah atau mengedit pengunjung
@@ -188,9 +201,10 @@ const tambahPengunjung = async () => {
 
       await axios.put(`http://localhost:5000/api/pengunjung/${editId.value}`, {
         nama: form.nama,
-        alasan: form.alasan,
+        hp: form.hp,
+        instansi: form.instansi,
         tujuan: form.tujuan,
-        kelas: form.dari_kelas,
+        keperluan: form.keperluan,
       });
 
       if (selectedFile.value) {
@@ -207,9 +221,10 @@ const tambahPengunjung = async () => {
       // Mode Tambah: Tambahkan data pengunjung baru
       const res = await axios.post("http://localhost:5000/api/pengunjung", {
         nama: form.nama,
-        alasan: form.alasan,
+        hp: form.hp,
+        instansi: form.instansi,
         tujuan: form.tujuan,
-        kelas: form.dari_kelas,
+        keperluan: form.keperluan,
       });
       const newId = res.data.id;
 
@@ -332,18 +347,20 @@ watch(pengunjungList, () => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #ffffff; /* Latar belakang tetap putih */
-  font-family: "Poppins", sans-serif; /* Font modern */
-  color: #2f318b; /* Warna teks utama */
+  background: linear-gradient(120deg, #e3f2fd 0%, #f8fafc 100%);
+  font-family: "Poppins", sans-serif;
+  color: #2f318b;
 }
 
 /* Header */
 .dashboard-header {
-  background-color: #2f318b; /* Warna biru gelap */
+  background: linear-gradient(90deg, #2f318b 60%, #1976d2 100%);
   color: white;
-  padding: 1.5rem;
+  padding: 2rem 1rem 1.2rem 1rem;
   text-align: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Bayangan lembut */
+  box-shadow: 0 4px 12px rgba(47, 49, 139, 0.15);
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
 }
 
 .dashboard-header h1 {
@@ -363,18 +380,19 @@ watch(pengunjungList, () => {
 
 /* Form Section */
 .form-section {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Bayangan lembut */
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 2rem 1.5rem;
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(47, 49, 139, 0.08);
+  transition: box-shadow 0.3s, transform 0.3s;
+  animation: fadeIn 0.7s;
 }
 
 .form-section h2 {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
-  color: #2f318b; /* Warna biru gelap */
+  color: #2f318b;
 }
 
 .form-section form {
@@ -383,43 +401,33 @@ watch(pengunjungList, () => {
   gap: 1rem;
 }
 
-.form-section input {
-  padding: 0.8rem;
-  border: 1px solid #ced4da;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.form-section input:focus {
-  border-color: #2f318b; /* Warna biru gelap */
-  box-shadow: 0 0 8px rgba(47, 49, 139, 0.25);
-  outline: none;
-}
-
 .form-buttons {
   display: flex;
   gap: 1rem;
 }
 
-.form-buttons button {
-  padding: 0.8rem 1.2rem;
+.form-buttons button,
+.list-section button {
+  padding: 0.7rem 1.4rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 20px;
   cursor: pointer;
   font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 2px 8px rgba(47, 49, 139, 0.08);
 }
 
-.form-buttons button[type="submit"] {
-  background-color: #2f318b; /* Warna biru gelap */
+.form-buttons button[type="submit"],
+.list-section button {
+  background: linear-gradient(90deg, #2f318b 60%, #1976d2 100%);
   color: white;
 }
 
-.form-buttons button[type="submit"]:hover {
-  background-color: #1e206b; /* Warna biru lebih gelap */
-  transform: scale(1.05);
+.form-buttons button[type="submit"]:hover,
+.list-section button:hover {
+  background: linear-gradient(90deg, #1976d2 60%, #2f318b 100%);
+  transform: scale(1.06);
 }
 
 .form-buttons button[type="button"] {
@@ -432,26 +440,44 @@ watch(pengunjungList, () => {
   transform: scale(1.05);
 }
 
+.form-section input {
+  padding: 0.8rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-section input:focus {
+  border-color: #2f318b;
+  box-shadow: 0 0 8px rgba(47, 49, 139, 0.25);
+  outline: none;
+}
+
 /* List Section */
 .list-section {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Bayangan lembut */
+  background: rgba(255, 255, 255, 0.95);
+  padding: 2rem 1.5rem;
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(47, 49, 139, 0.08);
+  transition: box-shadow 0.3s, transform 0.3s;
+  animation: fadeIn 0.7s;
 }
 
 .list-section h2 {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
-  color: #2f318b; /* Warna biru gelap */
+  color: #2f318b;
 }
 
 .list-section table {
   width: 100%;
-  border-collapse: collapse;
-  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
   overflow: hidden;
+  background: #f8fafc;
 }
 
 .list-section th,
@@ -462,9 +488,13 @@ watch(pengunjungList, () => {
 }
 
 .list-section th {
-  background-color: #2f318b; /* Warna biru gelap */
-  color: white;
+  background: #1976d2;
+  color: #fff;
   font-weight: 600;
+}
+
+.list-section tr:last-child td {
+  border-bottom: none;
 }
 
 .list-section tr:nth-child(even) {
@@ -522,10 +552,57 @@ watch(pengunjungList, () => {
   color: #2f318b;
 }
 
+/* Animasi Fade In */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .dashboard-content {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1.2rem;
+  }
+  .form-section,
+  .list-section {
+    padding: 1.2rem 0.7rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-header {
+    padding: 1.2rem 0.5rem 0.8rem 0.5rem;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+  }
+  .dashboard-header h1 {
+    font-size: 1.2rem;
+  }
+  .dashboard-content {
+    padding: 0.5rem;
+    gap: 0.7rem;
+  }
+  .form-section,
+  .list-section {
+    padding: 0.7rem 0.3rem;
+    border-radius: 10px;
+  }
+  .list-section th,
+  .list-section td {
+    padding: 0.5rem;
+    font-size: 0.95rem;
+  }
+  .foto-thumbnail {
+    width: 36px;
+    height: 36px;
   }
 }
 </style>
