@@ -92,23 +92,29 @@ html, body {
   background-size: cover;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px 10px 10px 10px;
   box-sizing: border-box;
 }
 
 .form-container {
-  background: rgba(255, 255, 255, 0.75);
-  padding: 0.4rem 0.7rem 0.7rem 0.7rem;
-  max-width: 340px;
-  width: 95%;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 1rem 1.2rem;
+  max-width: 520px;      
+  min-width: 340px;      
+  min-height: 360px;
+  max-height: 430px;
+  width: 98%;
   border-radius: 16px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(6px);
   font-family: "Segoe UI", sans-serif;
   margin: 0 auto;
-  box-sizing: border-box;      
-  overflow: hidden;            
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 label {
