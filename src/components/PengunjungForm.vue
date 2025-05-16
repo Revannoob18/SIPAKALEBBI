@@ -92,21 +92,23 @@ html, body {
   background-size: cover;
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 20px;
+  align-items: flex-start;
+  padding: 20px 10px 10px 10px;
   box-sizing: border-box;
 }
 
 .form-container {
-  background: rgba(255, 255, 255, 0.88);
-  padding: 2rem;
-  max-width: 480px; /* Diperlebar dari 430px */
-  width: 90%; /* Lebih responsif untuk mobile */
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.7rem;
+  max-width: 340px;
+  width: 95%;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(6px);
   font-family: "Segoe UI", sans-serif;
-  margin: 10px; /* Margin diperkecil */
+  margin: 0 auto;
+  box-sizing: border-box;      /* Tambahkan ini */
+  overflow: hidden;            /* Tambahkan ini */
 }
 
 label {
@@ -119,6 +121,7 @@ label {
 input,
 textarea {
   width: 100%;
+  box-sizing: border-box;      /* Tambahkan ini */
   padding: 0.75rem;
   margin-top: 0.3rem;
   border: 1px solid #90caf9;

@@ -190,12 +190,13 @@ function dataURLtoBlob(dataURL) {
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   border-radius: 20px;
-  padding: 3rem;
+  padding: 2.5rem;           /* Kembali ke ukuran semula */
   width: 100%;
-  max-width: 600px;
+  max-width: 600px;          /* Kembali ke 600px */
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin: 0 auto;
 }
 
 .scan-container:hover {
@@ -231,7 +232,7 @@ h1.title {
   overflow: hidden;
   position: relative;
   width: 100%;
-  height: 350px;
+  height: 350px;             /* Kembali ke 350px */
   background: rgba(47, 49, 139, 0.3);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
