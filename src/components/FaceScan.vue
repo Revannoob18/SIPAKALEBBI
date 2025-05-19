@@ -33,12 +33,14 @@
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "vue-toastification";
+import { usePengunjungStore } from '../storage/pengunjungStore'; // Tambahkan ini
 import * as faceapi from "face-api.js";
 import axios from "axios";
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const pengunjungStore = usePengunjungStore(); // Tambahkan ini
 
 const pengunjungId = ref(null);
 const loadingModels = ref(true);
@@ -124,19 +126,26 @@ async function uploadFace(imageBase64) {
   try {
     const blob = dataURLtoBlob(imageBase64);
     const formData = new FormData();
-    formData.append("image", blob, "face.jpg");
-    formData.append("pengunjung_id", pengunjungId.value);
 
-    await axios.post("http://localhost:5000/api/upload-face", formData, {
+    // Ambil data dari Pinia store
+    formData.append("nama", pengunjungStore.data.nama);
+    formData.append("hp", pengunjungStore.data.hp);
+    formData.append("instansi", pengunjungStore.data.instansi);
+    formData.append("tujuan", pengunjungStore.data.tujuan);
+    formData.append("keperluan", pengunjungStore.data.keperluan);
+    formData.append("foto", blob, "face.jpg");
+
+    await axios.post("http://localhost:5000/api/pengunjung", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
-    toast.success("Wajah berhasil disimpan!", { timeout: 3000 });
+    toast.success("Data dan wajah berhasil disimpan!", { timeout: 3000 });
+    pengunjungStore.reset(); // Reset data setelah submit
     router.push("/sukses");
   } catch (error) {
     scanning.value = false;
-    console.error("Gagal upload wajah:", error.response?.data || error.message);
-    toast.error("Gagal mengunggah wajah. Memuat ulang halaman…", {
+    console.error("Gagal upload data:", error.response?.data || error.message);
+    toast.error("Gagal mengunggah data. Memuat ulang halaman…", {
       timeout: 2000,
     });
     setTimeout(() => window.location.reload(), 2000);

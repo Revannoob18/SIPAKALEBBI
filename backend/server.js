@@ -11,18 +11,18 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // akses file foto
-app.use("/models", express.static(path.join(__dirname,"models")))
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // akses file foto
+app.use("/models", express.static(path.join(__dirname, "models")));
 
 // Koneksi ke database
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "", // sesuaikan jika ada password
-  database: "buku_tamu_sman1bone"
+  database: "buku_tamu_sman1bone",
 });
 
-db.connect(err => {
+db.connect((err) => {
   if (err) {
     console.error("❌ Gagal koneksi database:", err);
   } else {
@@ -39,7 +39,7 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
     cb(null, file.fieldname + "-" + uniqueSuffix + ext);
-  }
+  },
 });
 const upload = multer({ storage });
 
@@ -48,7 +48,7 @@ const upload = multer({ storage });
 // ==============================
 app.post(
   "/api/pengunjung",
-  upload.none(),   // ← multer akan parse semua field non-file di req.body
+  upload.single("foto"),
   (req, res) => {
     const { nama, hp, instansi, tujuan, keperluan } = req.body;
     if (!nama || !hp || !instansi || !tujuan || !keperluan) {
@@ -65,7 +65,24 @@ app.post(
           console.error("❌ Gagal menyimpan pengunjung:", err);
           return res.status(500).json({ message: "Gagal menyimpan data." });
         }
-        res.status(201).json({ message: "Pengunjung ditambahkan.", id: result.insertId });
+
+        // Jika ada file foto, simpan ke wajah_pengunjung
+        if (req.file) {
+          const filePath = `/uploads/${req.file.filename}`;
+          const sqlFoto = `
+            INSERT INTO wajah_pengunjung (file_foto, pengunjung_id)
+            VALUES (?, ?)
+          `;
+          db.query(sqlFoto, [filePath, result.insertId], (err2) => {
+            if (err2) {
+              console.error("❌ Gagal simpan foto:", err2);
+              // Tidak return error, tetap lanjut
+            }
+            res.status(201).json({ message: "Pengunjung & foto ditambahkan.", id: result.insertId });
+          });
+        } else {
+          res.status(201).json({ message: "Pengunjung ditambahkan.", id: result.insertId });
+        }
       }
     );
   }
@@ -148,7 +165,7 @@ app.put("/api/pengunjung/:id", (req, res) => {
 app.delete("/api/pengunjung/:id", (req, res) => {
   const { id } = req.params;
   const sql = "DELETE FROM pengunjung WHERE id = ?";
-  db.query(sql, [id], err => {
+  db.query(sql, [id], (err) => {
     if (err) {
       console.error("❌ Gagal menghapus:", err);
       return res.status(500).json({ message: "Gagal menghapus data." });
@@ -166,8 +183,8 @@ app.use("/api/upload", uploadRouter);
 // ==============================
 // ROUTER: FACE SCAN WAJAH
 // ==============================
-const uploadFaceRouter = require("./routes/upload-face")
-app.use("/api", uploadFaceRouter)
+const uploadFaceRouter = require("./routes/upload-face");
+app.use("/api", uploadFaceRouter);
 
 // ==============================
 // ENDPOINT: LOGIN ADMIN
@@ -201,7 +218,8 @@ app.post("/api/admin/login", (req, res) => {
 // Middleware untuk memverifikasi token
 const authenticateToken = (req, res, next) => {
   const token = req.headers["authorization"];
-  if (!token) return res.status(403).json({ message: "Token tidak ditemukan." });
+  if (!token)
+    return res.status(403).json({ message: "Token tidak ditemukan." });
 
   jwt.verify(token, SECRET_KEY, (err, user) => {
     if (err) return res.status(403).json({ message: "Token tidak valid." });
@@ -212,11 +230,13 @@ const authenticateToken = (req, res, next) => {
 
 // Contoh endpoint yang dilindungi
 app.get("/api/admin/protected", authenticateToken, (req, res) => {
-  res.json({ message: "Ini adalah data rahasia yang hanya bisa diakses oleh admin." });
+  res.json({
+    message: "Ini adalah data rahasia yang hanya bisa diakses oleh admin.",
+  });
 });
 
 // ==============================
-// JALANKAN SERVER
+// JALANKAN SERVER              
 // ==============================
 app.listen(PORT, () => {
   console.log(`🚀 Server berjalan di http://localhost:${PORT}`);

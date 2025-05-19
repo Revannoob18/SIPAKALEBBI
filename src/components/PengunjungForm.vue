@@ -7,7 +7,11 @@
         <input type="text" v-model="form.nama" required class="animate-focus" />
 
         <label>No.Hp*</label>
-        <input type="text" v-model="form.hp" required class="animate-focus" />
+        <vue-tel-input
+          v-model="form.hp"
+          required
+          placeholder="Masukkan nomor telepon"
+        />
 
         <label>Asal Instansi*</label>
         <input
@@ -44,9 +48,13 @@
 </template>
 
 <script>
-import axios from "axios";
+import { usePengunjungStore } from '../storage/pengunjungStore';
+import { VueTelInput } from 'vue-tel-input';
+import 'vue-tel-input/dist/vue-tel-input.css';
+import { useRouter } from 'vue-router';
 
 export default {
+  components: { VueTelInput },
   data() {
     return {
       form: {
@@ -58,36 +66,15 @@ export default {
       },
     };
   },
+  setup() {
+    const pengunjungStore = usePengunjungStore();
+    const router = useRouter();
+    return { pengunjungStore, router };
+  },
   methods: {
-    async handleSubmit() {
-      try {
-        const formData = new FormData();
-        formData.append("nama", this.form.nama);
-        formData.append("hp", this.form.hp);
-        formData.append("instansi", this.form.instansi);
-        formData.append("tujuan", this.form.tujuan);
-        formData.append("keperluan", this.form.keperluan);
-
-        const response = await axios.post(
-          "http://localhost:5000/api/pengunjung",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-
-        console.log(response.data);
-        const pengunjungId = response.data.id;
-        this.$router.push(`/facescan/${pengunjungId}`);
-      } catch (error) {
-        console.error(
-          "Gagal mengirim data pengunjung:",
-          error.response?.data || error.message
-        );
-        alert("Gagal mengirim data, silakan coba lagi.");
-      }
+    handleSubmit() {
+      this.pengunjungStore.setData(this.form);
+      this.$router.push("/facescan");
     },
   },
 };

@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Endpoint: Upload foto wajah dan simpan ke DB
-router.post("/", upload.single("foto"), (req, res) => {
+router.post("/upload-face", upload.single("foto"), (req, res) => {
   const { pengunjung_id } = req.body;
   if (!req.file || !pengunjung_id) {
     return res.status(400).json({ error: "pengunjung_id dan foto wajib diisi." });

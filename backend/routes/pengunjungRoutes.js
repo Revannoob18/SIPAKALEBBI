@@ -28,7 +28,7 @@ router.get("/", (req, res) => {
 });
 
 // POST tambah pengunjung
-router.post("/", upload.none(), (req, res) => {
+router.post("/upload-face", upload.single('foto'), (req, res) => {
   const { nama, hp, instansi, tujuan, keperluan } = req.body;
   const waktu = new Date();
 

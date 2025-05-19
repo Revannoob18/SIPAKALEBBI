@@ -22,7 +22,7 @@ const routes = [
     component: PengunjungForm
   },
   {
-    path: '/facescan/:id',
+    path: '/facescan',
     name: 'FaceScan',
     component: () => import('@/components/FaceScan.vue')
   },

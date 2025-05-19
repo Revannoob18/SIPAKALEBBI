@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Endpoint POST upload wajah
-router.post("/upload-face", upload.single("image"), (req, res) => {
+router.post("/upload-face", upload.single("foto"), (req, res) => {
   if (!req.file) {
     return res.status(400).send({ error: "Gambar wajah wajib diupload" });
   }
