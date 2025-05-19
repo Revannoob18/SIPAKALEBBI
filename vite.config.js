@@ -19,5 +19,5 @@ export default defineConfig(({ mode }) => ({
       }
     }
   },
-  base: mode, huntington: mode === 'production' ? '/SIPAKALEBBI/' : '/'
+  base: mode === 'production' ? '/SIPAKALEBBI/' : '/'
 }));
