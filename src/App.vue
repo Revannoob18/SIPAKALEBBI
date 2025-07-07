@@ -4,11 +4,10 @@
   </div>
 </template>
 
-<script>
-export default {
-  name:'App'
-}
+<script setup>
+const isLoggedIn = !!localStorage.getItem('authToken');
 </script>
+
 <style scoped>
 @import 'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css';
 
@@ -19,10 +18,8 @@ body {
   transition: all 0.3s ease-in-out;
 }
 
-
- #app {
+#app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  display: block; /* atau flex-direction: column; tanpa justify/align center */
 }
 </style>

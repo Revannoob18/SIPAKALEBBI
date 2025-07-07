@@ -4,6 +4,7 @@
       <i class="fas fa-check-circle checkmark-icon"></i>
       <h1 class="success-text">Data Berhasil Disimpan!</h1>
       <p class="sub-text">Silakan masuk ke sekolah</p>
+      <button class="redirect-button" @click="$router.push('/')">Kembali ke Beranda</button>
     </div>
   </div>
 </template>
@@ -115,5 +116,29 @@ export default {
   text-align: center;
   line-height: 1.5;
   animation: fadeInText 2.5s ease forwards;
+}
+
+/* Tombol kembali ke beranda */
+.redirect-button {
+  background-color: #2f318b;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 10px;
+  margin-top: 20px;
+  animation: fadeInButton 3s ease forwards;
+}
+
+@keyframes fadeInButton {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

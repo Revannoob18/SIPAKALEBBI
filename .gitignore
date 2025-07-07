@@ -27,3 +27,50 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# ======================================
+# TAMBAHAN UNTUK PROJECT BUKU TAMU
+# ======================================
+
+# WhatsApp Web Auth (SANGAT PENTING!)
+backend/.wwebjs_auth/
+.wwebjs_auth/
+
+# Backend specific
+backend/node_modules/
+backend/uploads/
+backend/.env
+
+# Database files (jika ada)
+*.db
+*.sqlite
+*.sqlite3
+
+# Build files
+build/
+
+# Cache directories
+.cache/
+.npm/
+.yarn/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output
+
+# OS generated files
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Package manager lock files (optional, biasanya di-include)
+# package-lock.json
+# yarn.lock
