@@ -8,7 +8,7 @@
 const isLoggedIn = !!localStorage.getItem('authToken');
 </script>
 
-<style scoped>
+<style>
 @import 'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css';
 
 body {
@@ -17,9 +17,11 @@ body {
   font-family: 'Segoe UI', sans-serif;
   transition: all 0.3s ease-in-out;
 }
+</style>
 
+<style scoped>
 #app {
   min-height: 100vh;
-  display: block; /* atau flex-direction: column; tanpa justify/align center */
+  display: block;
 }
 </style>

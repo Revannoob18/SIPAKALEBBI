@@ -525,6 +525,7 @@ watch([pengunjungList, filterDate, searchNama], () => {
 .dashboard-root {
   display: flex;
   min-height: 100vh;
+  height: auto;
   background: #f4f6fb;
 }
 .sidebar {
