@@ -6,7 +6,7 @@
         <div class="input-group">
           <input
             type="text"
-            v-model="username"
+            v-model="form.username"
             placeholder="Username"
             required
           />
@@ -14,7 +14,7 @@
         <div class="input-group">
           <input
             type="password"
-            v-model="password"
+            v-model="form.password"
             placeholder="Password"
             required
           />
@@ -27,33 +27,156 @@
 </template>
 
 <script setup>
-import { useRouter } from "vue-router";
+import { ref, onMounted, onUnmounted } from "vue";
 import axios from "axios";
-import { ref } from "vue";
+import { useRouter } from "vue-router";
 
+// Router
 const router = useRouter();
-const username = ref("");
-const password = ref("");
-const errorMessage = ref("");
 
-const login = async () => {
-  try {
-    // Kirim permintaan login ke backend
-    const res = await axios.post("http://localhost:5000/api/admin/login", {
-      username: username.value,
-      password: password.value,
-    });
+// Reactive data
+const form = ref({ 
+  username: "", 
+  password: "" 
+});
 
-    // Simpan token autentikasi di localStorage
-    localStorage.setItem("authToken", res.data.token);
+const errorMessage = ref(""); // ✅ Ganti dari errorMsg ke errorMessage
+const isLoading = ref(false);
+const loginAttempts = ref(0);
+const isBlocked = ref(false);
+const blockTimeRemaining = ref(0);
 
-    // Arahkan ke halaman dashboard
-    router.push("/admin/dashboard");
-  } catch (err) {
-    console.error("Login gagal:", err);
-    errorMessage.value = "Username atau password salah.";
+// Constants
+const MAX_ATTEMPTS = 3; // ✅ Dikurangi ke 3 sesuai permintaan
+const BLOCK_DURATION = 1 * 60 * 1000; // ✅ 1 menit
+let blockTimer = null;
+
+// Login function
+async function login() {
+  // Cek jika sedang diblokir
+  if (isBlocked.value) {
+    errorMessage.value = `Terlalu banyak percobaan login. Coba lagi dalam ${blockTimeRemaining.value} detik.`;
+    return;
   }
-};
+  
+  if (isLoading.value) return;
+  
+  // Validasi input
+  if (!form.value.username.trim() || !form.value.password.trim()) {
+    errorMessage.value = "Username dan password harus diisi.";
+    return;
+  }
+  
+  isLoading.value = true;
+  errorMessage.value = ""; // ✅ Konsisten dengan errorMessage
+  
+  try {
+    console.log("Sending login request:", {
+      username: form.value.username,
+      password: form.value.password
+    });
+    
+    const res = await axios.post("http://localhost:5000/api/admin/login", {
+      username: form.value.username,
+      password: form.value.password,
+    });
+    
+    console.log("Login response:", res.data);
+    
+    // Simpan token
+    localStorage.setItem("authToken", res.data.token);
+    
+    // Reset attempts on successful login
+    loginAttempts.value = 0;
+    localStorage.removeItem('loginAttempts');
+    localStorage.removeItem('lastLoginAttempt');
+    localStorage.removeItem('blockEndTime');
+    
+    // Redirect ke dashboard
+    router.push("/admin/dashboard");
+    
+  } catch (err) {
+    console.error("Login error:", err);
+    
+    if (err.response?.status === 429) {
+      // Rate limited by backend
+      errorMessage.value = err.response.data.error || "Terlalu banyak percobaan login.";
+      isBlocked.value = true;
+      startBlockTimer();
+    } else if (err.response?.status === 400) {
+      // Bad request - validation error
+      errorMessage.value = err.response.data.message || "Username dan password harus diisi.";
+    } else if (err.response?.status === 401) {
+      // Unauthorized - wrong credentials
+      loginAttempts.value++;
+      localStorage.setItem('loginAttempts', loginAttempts.value.toString());
+      localStorage.setItem('lastLoginAttempt', Date.now().toString());
+      
+      if (loginAttempts.value >= MAX_ATTEMPTS) {
+        isBlocked.value = true;
+        startBlockTimer();
+        errorMessage.value = `Akun diblokir selama 1 menit karena terlalu banyak percobaan login yang gagal.`;
+      } else {
+        errorMessage.value = `Username atau password salah. Sisa percobaan: ${MAX_ATTEMPTS - loginAttempts.value}`;
+      }
+    } else {
+      // Server error
+      errorMessage.value = "Terjadi kesalahan server. Silakan coba lagi.";
+    }
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+// Block timer function
+function startBlockTimer() {
+  const blockEndTime = Date.now() + BLOCK_DURATION;
+  localStorage.setItem('blockEndTime', blockEndTime.toString());
+  
+  blockTimer = setInterval(() => {
+    const now = Date.now();
+    const remaining = blockEndTime - now;
+    
+    if (remaining <= 0) {
+      // Block expired
+      isBlocked.value = false;
+      loginAttempts.value = 0;
+      blockTimeRemaining.value = 0;
+      localStorage.removeItem('loginAttempts');
+      localStorage.removeItem('lastLoginAttempt');
+      localStorage.removeItem('blockEndTime');
+      clearInterval(blockTimer);
+      blockTimer = null;
+    } else {
+      blockTimeRemaining.value = Math.ceil(remaining / 1000);
+    }
+  }, 1000);
+}
+
+// Check block status on mount
+function checkBlockStatus() {
+  const attempts = parseInt(localStorage.getItem('loginAttempts') || '0');
+  const blockEndTime = parseInt(localStorage.getItem('blockEndTime') || '0');
+  
+  loginAttempts.value = attempts;
+  
+  if (attempts >= MAX_ATTEMPTS && blockEndTime > Date.now()) {
+    isBlocked.value = true;
+    blockTimeRemaining.value = Math.ceil((blockEndTime - Date.now()) / 1000);
+    startBlockTimer();
+  }
+}
+
+// Lifecycle hooks
+onMounted(() => {
+  checkBlockStatus();
+});
+
+onUnmounted(() => {
+  if (blockTimer) {
+    clearInterval(blockTimer);
+  }
+});
 </script>
 
 <style scoped>

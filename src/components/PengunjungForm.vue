@@ -2,6 +2,12 @@
   <div class="form-page">
     <div class="form-container animate__animated animate__fadeInUp">
       <h1>Buku Tamu SMAN 1 BONE</h1>
+
+      <!-- Rate limit warning -->
+      <div v-if="showRateLimitWarning" class="rate-limit-warning">
+        ⚠️ Harap tunggu {{ cooldownRemaining }} detik sebelum submit lagi
+      </div>
+
       <form @submit.prevent="handleSubmit">
         <label>Nama Tamu*</label>
         <input type="text" v-model="form.nama" required class="animate-focus" />
@@ -48,10 +54,10 @@
 </template>
 
 <script>
-import { usePengunjungStore } from '../storage/pengunjungStore';
-import { VueTelInput } from 'vue-tel-input';
-import 'vue-tel-input/dist/vue-tel-input.css';
-import { useRouter } from 'vue-router';
+import { usePengunjungStore } from "../storage/pengunjungStore";
+import { VueTelInput } from "vue-tel-input";
+import "vue-tel-input/dist/vue-tel-input.css";
+import { useRouter } from "vue-router";
 
 export default {
   components: { VueTelInput },
@@ -64,6 +70,12 @@ export default {
         tujuan: "",
         keperluan: "",
       },
+      isSubmitting: false,
+      lastSubmitTime: 0,
+      cooldownPeriod: 15 * 1000, 
+      showRateLimitWarning: false,
+      cooldownRemaining: 0,
+      cooldownTimer: null,
     };
   },
   setup() {
@@ -73,9 +85,76 @@ export default {
   },
   methods: {
     handleSubmit() {
+      // Cek rate limiting
+      if (this.checkRateLimit()) {
+        return;
+      }
+      
+      // Validasi form
+      if (!this.validateForm()) {
+        return;
+      }
+      
+      this.isSubmitting = true;
+      this.lastSubmitTime = Date.now();
+      
+      // Simpan ke localStorage
+      localStorage.setItem('lastSubmitTime', this.lastSubmitTime.toString());
+      
+      // Submit data
       this.pengunjungStore.setData(this.form);
-      this.$router.push("/facescan");
+      
+      setTimeout(() => {
+        this.isSubmitting = false;
+        this.$router.push("/facescan");
+      }, 1000);
     },
+    
+    checkRateLimit() {
+      const now = Date.now();
+      const lastSubmit = parseInt(localStorage.getItem('lastSubmitTime') || '0');
+      const timeDiff = now - lastSubmit;
+      
+      if (timeDiff < this.cooldownPeriod) {
+        this.showRateLimitWarning = true;
+        this.cooldownRemaining = Math.ceil((this.cooldownPeriod - timeDiff) / 1000);
+        this.startCooldownTimer();
+        return true;
+      }
+      
+      return false;
+    },
+    
+    validateForm() {
+      const required = ['nama', 'hp', 'instansi', 'tujuan', 'keperluan'];
+      for (let field of required) {
+        if (!this.form[field].trim()) {
+          alert(`${field} harus diisi!`);
+          return false;
+        }
+      }
+      return true;
+    },
+    
+    startCooldownTimer() {
+      this.cooldownTimer = setInterval(() => {
+        this.cooldownRemaining--;
+        if (this.cooldownRemaining <= 0) {
+          this.showRateLimitWarning = false;
+          clearInterval(this.cooldownTimer);
+        }
+      }, 1000);
+    },
+  },
+  
+  mounted() {
+    this.checkRateLimit();
+  },
+  
+  beforeUnmount() {
+    if (this.cooldownTimer) {
+      clearInterval(this.cooldownTimer);
+    }
   },
 };
 </script>

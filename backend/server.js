@@ -9,16 +9,128 @@ const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const fs = require("fs");
 const compression = require("compression");
 
+const rateLimit = require("express-rate-limit");
+const slowDown = require("express-slow-down");
+
 const app = express();
 const PORT = 5000;
 
+// ========================================
+// RATE LIMITING CONFIGURATION
+// ========================================
 
-// Middleware
+// General rate limiter untuk semua endpoint
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 100, // Max 100 requests per IP per 15 menit
+  message: {
+    error: "Terlalu banyak permintaan dari IP ini, coba lagi dalam 15 menit.",
+    retry_after: 15 * 60 // detik
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip successful requests dari count
+  skipSuccessfulRequests: false,
+  // Skip failed requests dari count
+  skipFailedRequests: false,
+});
+
+// Rate limiter khusus untuk form pengunjung
+const pengunjungLimiter = rateLimit({
+  windowMs: 15 * 1000, // 5 menit
+  max: 10, // Max 3 submit per IP per 5 menit
+  message: {
+    error: "Terlalu banyak pendaftaran dari IP ini, tunggu 10 detik.",
+    retry_after: 15
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter untuk login admin
+const loginLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 15 menit
+  max: 5, // Max 5 login attempts per IP per 15 menit
+  message: {
+    error: "Terlalu banyak percobaan login, coba lagi dalam 1 menit.",
+    retry_after: 60
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip successful requests dari count
+  skipSuccessfulRequests: true,
+});
+
+// Rate limiter untuk WhatsApp (mencegah spam)
+const whatsappLimiter = rateLimit({
+  windowMs: 15 * 1000, // 2 menit
+  max: 1, // Max 1 WhatsApp request per IP per 2 menit
+  message: {
+    error: "Tunggu 15 detik sebelum mengirim WhatsApp lagi.",
+    retry_after: 15
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Speed limiter untuk mencegah rapid requests (FIXED)
+const speedLimiter = slowDown({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  delayAfter: 10, // Mulai delay setelah 10 requests
+  delayMs: () => 500, // ✅ Fixed: function syntax
+  maxDelayMs: 5000, // Max delay 5 detik
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  validate: {
+    delayMs: false // ✅ Disable warning
+  }
+});
+
+// ========================================
+// LOGGING MIDDLEWARE (untuk monitoring)
+// ========================================
+const logsDir = path.join(__dirname, "logs");
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir);
+}
+
+const logMiddleware = (req, res, next) => {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.url,
+    ip: req.ip || req.connection.remoteAddress,
+    userAgent: req.get('User-Agent') || 'Unknown',
+    referer: req.get('Referer') || 'Direct'
+  };
+  
+  // Log ke file
+  const logPath = path.join(logsDir, 'access.log');
+  fs.appendFile(logPath, JSON.stringify(logEntry) + '\n', (err) => {
+    if (err) console.error('Error writing to log file:', err);
+  });
+  
+  next();
+};
+
+// ========================================
+// MIDDLEWARE SETUP (ORDER PENTING!)
+// ========================================
+
+// 1. Logging middleware (pertama)
+app.use(logMiddleware);
+
+// 2. Basic middleware
 app.use(compression()); 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Tambah limit untuk upload
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// 3. Rate limiting middleware
+app.use(generalLimiter); // Apply ke semua routes
+app.use(speedLimiter);   // Apply speed limiting
+
+// 4. Static files
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
@@ -27,7 +139,7 @@ if (!fs.existsSync(uploadsDir)) {
 app.use("/uploads", express.static(uploadsDir));
 app.use('/models', express.static(path.join(__dirname, "models"), {
   setHeaders: (res) => {
-    res.set('Cache-Control', 'public, max-age=31536000'); // Cache 1 tahun
+    res.set('Cache-Control', 'public, max-age=31536000');
   }
 }));
 
@@ -113,7 +225,7 @@ client.initialize();
 // ==============================
 // ENDPOINT: TAMBAH PENGUNJUNG
 // ==============================
-app.post("/api/pengunjung", upload.single("foto"), (req, res) => {
+app.post("/api/pengunjung", pengunjungLimiter, upload.single("foto"), (req, res) => {
   const { nama, hp, instansi, tujuan, keperluan } = req.body;
   if (!nama || !hp || !instansi || !tujuan || !keperluan) {
     return res.status(400).json({ message: "Semua field wajib diisi." });
@@ -289,7 +401,7 @@ app.delete("/api/pengunjung/:id", (req, res) => {
 // ==============================
 // ENDPOINT: KIRIM QR CODE VIA WHATSAPP
 // ==============================
-app.post("/api/send-qr", async (req, res) => {
+app.post("/api/send-qr", whatsappLimiter, async (req, res) => {
   const { phoneNumber, pengunjungId } = req.body;
   console.log("Received /api/send-qr request:", { phoneNumber, pengunjungId });
 
@@ -489,38 +601,77 @@ const uploadFaceRouter = require("./routes/upload-face");
 app.use("/api", uploadFaceRouter);
 
 // ==============================
-// ENDPOINT: LOGIN ADMIN
+// ENDPOINT: LOGIN ADMIN (dengan rate limiting)
 // ==============================
 const jwt = require("jsonwebtoken");
-const SECRET_KEY = "bukuTamuSMAN1Bone_2025!@#_xYzQwErTyUiOp1234567890$%^&*()_+"; // Ganti dengan secret key yang kuat!
+const SECRET_KEY = "bukuTamuSMAN1Bone_2025!@#_xYzQwErTyUiOp1234567890$%^&*()_+";
 
 // Middleware verifikasi token
 const authenticateToken = (req, res, next) => {
   const token = req.headers["authorization"];
-  if (!token)
+  if (!token) {
     return res.status(403).json({ message: "Token tidak ditemukan." });
+  }
 
   jwt.verify(token, SECRET_KEY, (err, user) => {
-    if (err) return res.status(403).json({ message: "Token tidak valid." });
+    if (err) {
+      return res.status(403).json({ message: "Token tidak valid." });
+    }
     req.user = user;
     next();
   });
 };
 
-// Endpoint login admin (menghasilkan token)
-app.post("/api/admin/login", (req, res) => {
+// Endpoint login admin (dengan rate limiting)
+app.post("/api/admin/login", loginLimiter, (req, res) => {
   const { username, password } = req.body;
+  
+  // Validasi input
+  if (!username || !password) {
+    return res.status(400).json({ 
+      message: "Username dan password harus diisi." 
+    });
+  }
+
+  // Query database
   const sql = "SELECT * FROM admin WHERE nama = ? AND password = ?";
   db.query(sql, [username, password], (err, results) => {
     if (err) {
       console.error("❌ Error saat login:", err);
-      return res.status(500).json({ message: "Terjadi kesalahan server." });
+      return res.status(500).json({ 
+        message: "Terjadi kesalahan server." 
+      });
     }
+    
     if (results.length === 0) {
-      return res.status(401).json({ message: "Username atau password salah." });
+      // Log failed login attempt
+      console.log(`❌ Failed login attempt for username: ${username} from IP: ${req.ip}`);
+      return res.status(401).json({ 
+        message: "Username atau password salah." 
+      });
     }
-    const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "1h" });
-    res.json({ token });
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        username: results[0].nama,
+        id: results[0].id 
+      }, 
+      SECRET_KEY, 
+      { expiresIn: "1h" }
+    );
+    
+    // Log successful login
+    console.log(`✅ Successful login for username: ${username} from IP: ${req.ip}`);
+    
+    res.json({ 
+      token,
+      message: "Login berhasil.",
+      user: {
+        id: results[0].id,
+        nama: results[0].nama
+      }
+    });
   });
 });
 
@@ -528,6 +679,15 @@ app.post("/api/admin/login", (req, res) => {
 app.get("/api/admin/protected", authenticateToken, (req, res) => {
   res.json({
     message: "Ini adalah data rahasia yang hanya bisa diakses oleh admin.",
+    user: req.user
+  });
+});
+
+// Endpoint untuk logout (blacklist token - opsional)
+app.post("/api/admin/logout", authenticateToken, (req, res) => {
+  // Dalam implementasi production, bisa tambahkan token blacklist
+  res.json({ 
+    message: "Logout berhasil. Hapus token dari localStorage." 
   });
 });
 
