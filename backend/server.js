@@ -554,7 +554,7 @@ app.get("/api/pengunjung", (req, res) => {
 // ========================================
 // ENDPOINT: LAPORAN BULANAN PENGUNJUNG
 // ========================================
-app.get("/api/pengunjung/laporan-bulanan", (req, res) => {
+app.get("/api/pengunjung/laporan-bulanan", authenticateToken, (req, res) => {
   const sql = `
     SELECT 
       DATE_FORMAT(waktu, '%Y-%m') AS bulan,
@@ -569,12 +569,23 @@ app.get("/api/pengunjung/laporan-bulanan", (req, res) => {
   db.query(sql, (err, results) => {
     if (err) {
       console.error("❌ Gagal mengambil laporan bulanan:", err);
-      return res.status(500).json({ message: "Gagal mengambil laporan bulanan." });
+      return res.status(500).json({ 
+        message: "Gagal mengambil laporan bulanan.",
+        data: []
+      });
     }
+    
     console.log(`✅ Laporan bulanan diambil: ${results.length} data`);
-    res.json(results);
+    
+    // ✅ RETURN CONSISTENT FORMAT
+    res.json({
+      message: "Laporan bulanan berhasil diambil.",
+      data: results || [],
+      total: results ? results.length : 0
+    });
   });
 });
+
 
 // ========================================
 // ENDPOINT: UPDATE JUMLAH KUNJUNGAN
@@ -844,7 +855,9 @@ app.get("/api/admin/protected", authenticateToken, (req, res) => {
   });
 });
 
-// Dashboard stats
+// ========================================
+// EXISTING DASHBOARD STATS (LINE 877-912) - HAS ISSUES
+// ========================================
 app.get("/api/admin/stats", authenticateToken, (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   const thisMonth = new Date().toISOString().slice(0, 7);
@@ -873,11 +886,13 @@ app.get("/api/admin/stats", authenticateToken, (req, res) => {
         console.error(`❌ Error getting ${key}:`, err);
         stats[key] = key === 'instansiTerbanyak' ? [] : 0;
       } else {
+        // ❌ PROBLEM: Inconsistent response format
         stats[key] = key === 'instansiTerbanyak' ? results : results[0].total;
       }
       
       completed++;
       if (completed === totalQueries) {
+        // ❌ PROBLEM: No consistent response wrapper
         res.json(stats);
       }
     });
