@@ -163,6 +163,7 @@ async function captureFace() {
 
 async function uploadFace(imageBase64) {
   try {
+    // ✅ STEP 1: Upload pengunjung data
     const blob = dataURLtoBlob(imageBase64);
     const formData = new FormData();
     formData.append("nama", pengunjungStore.data.nama);
@@ -172,32 +173,67 @@ async function uploadFace(imageBase64) {
     formData.append("keperluan", pengunjungStore.data.keperluan);
     formData.append("foto", blob, "face.jpg");
 
+    console.log("📤 Uploading pengunjung data...");
     const response = await axios.post("http://localhost:5000/api/pengunjung", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
     const pengunjungId = response.data.id;
-    qrCode.value = `http://localhost:5000/api/pengunjung/${pengunjungId}`;
-    toast.success("Data dan wajah berhasil disimpan! QR code ditampilkan di bawah.", { timeout: 3000 });
+    console.log("✅ Pengunjung created with ID:", pengunjungId);
 
-    // Format nomor HP ke format WhatsApp
-    let phoneNumber = pengunjungStore.data.hp.replace(/[- ]/g, "");
-    if (!phoneNumber.startsWith("+62") && !phoneNumber.startsWith("62")) {
-      phoneNumber = `+62${phoneNumber.replace(/^0/, "")}`;
+    // ✅ STEP 2: Generate QR Code  
+    try {
+      console.log("📱 Generating QR code...");
+      const qrResponse = await axios.post(`http://localhost:5000/api/qr/${pengunjungId}`);
+      console.log("✅ QR generated:", qrResponse.data);
+      
+      qrCode.value = qrResponse.data.qr_url;
+      
+    } catch (qrError) {
+      console.error("❌ QR generation failed:", qrError);
+      // Fallback QR
+      qrCode.value = `http://localhost:5173/verify/${pengunjungId}`;
     }
-    if (!/^\+62[0-9]{9,12}$/.test(phoneNumber)) {
-      throw new Error("Nomor telepon tidak valid untuk WhatsApp.");
+
+    // ✅ STEP 3: Send WhatsApp (with proper error handling)
+    try {
+      console.log("📱 Sending WhatsApp...");
+      
+      // Format phone number
+      let phoneNumber = pengunjungStore.data.hp.replace(/[- ]/g, "");
+      if (phoneNumber.startsWith("0")) {
+        phoneNumber = phoneNumber.substring(1);
+      }
+      
+      console.log("📱 Formatted phone:", phoneNumber);
+      console.log("📱 Pengunjung ID:", pengunjungId);
+
+      // ✅ SEND REQUEST dengan format yang benar
+      const whatsappResponse = await axios.post("http://localhost:5000/api/send-qr", {
+        phoneNumber: phoneNumber,  // Tanpa +62, backend akan handle
+        pengunjungId: pengunjungId
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log("✅ WhatsApp sent:", whatsappResponse.data);
+      toast.success("QR code berhasil dikirim ke WhatsApp!", { timeout: 3000 });
+      
+    } catch (whatsappError) {
+      console.warn("⚠️ WhatsApp failed:", whatsappError.response?.data || whatsappError.message);
+      toast.info("QR code tersedia di layar. WhatsApp sedang maintenance.", { timeout: 3000 });
     }
 
-    await axios.post("http://localhost:5000/api/send-qr", {
-      phoneNumber,
-      pengunjungId,
-    });
-
+    // ✅ SUCCESS MESSAGE
+    toast.success("Data dan wajah berhasil disimpan!", { timeout: 3000 });
     pengunjungStore.reset();
+    
   } catch (error) {
     scanning.value = false;
-    toast.error(`Gagal mengunggah data: ${error.response?.data?.error || error.message}`, { timeout: 2000 });
+    console.error("❌ Upload error:", error);
+    toast.error(`Gagal menyimpan data: ${error.response?.data?.message || error.message}`, { timeout: 4000 });
   }
 }
 

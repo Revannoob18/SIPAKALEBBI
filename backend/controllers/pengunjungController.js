@@ -8,7 +8,7 @@ exports.tambahPengunjung = (req, res) => {
     VALUES (?, ?, ?, ?, ?) 
   `;
 
-  db.query(query, [nama, hp, instasni, tujuan, keperluan], (err, result) => {
+  db.query(query, [nama, hp, instansi, tujuan, keperluan], (err, result) => {
     if (err) {
       console.error("Gagal menambah pengunjung:", err);
       return res.status(500).json({ message: 'Gagal menambah pengunjung' });

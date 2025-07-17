@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
@@ -10,14 +10,22 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    outDir: 'docs',
+    outDir: 'dist',
+    assetsDir: 'assets',
+    minify: false,                              
     rollupOptions: {
       output: {
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]'
+        entryFileNames: 'assets/index.js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
+        manualChunks: undefined
       }
-    }
+    },
+    copyPublicDir: true
   },
-  base: mode === 'production' ? '/SIPAKALEBBI/' : '/'
-}));
+  base: './',                                   
+  server: {
+    port: 3000,
+    host: true
+  }
+});

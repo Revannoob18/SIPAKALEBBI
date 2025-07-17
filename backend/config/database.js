@@ -1,18 +1,18 @@
 const mysql = require('mysql2');
 
 const db = mysql.createConnection({
-  host: 'localhost',    // JANGAN diganti kalau kamu pakai XAMPP
-  user: 'root',         // default XAMPP user: root
-  password: '',         // kosongkan kalau di XAMPP kamu kosong
-  database: 'buku_tamu_sman1bone'
+  host: 'localhost',
+  user: 'root',
+  password: '', // Ganti dengan password MySQL Anda
+  database: 'buku_tamu_sman1bone' // Ganti dengan nama database Anda
 });
 
 db.connect((err) => {
   if (err) {
-    console.error('Database connection failed:', err);
-    return;
+    console.error('Koneksi ke database gagal:', err);
+  } else {
+    console.log('Koneksi ke database berhasil!');
   }
-  console.log('Database connected.');
 });
 
 module.exports = db;

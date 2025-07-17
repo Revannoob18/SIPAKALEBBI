@@ -1,58 +1,30 @@
-# Dependency directories
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# Dependencies
 node_modules/
-dist/
-dist-ssr
+*/node_modules/
+backend/node_modules/
+frontend/node_modules/
+src/node_modules/
+
+# Package Lock Files (pilih salah satu)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Logs
-logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-# Local environment files
-*.local
-.env
-.env.*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# ======================================
-# TAMBAHAN UNTUK PROJECT BUKU TAMU
-# ======================================
-
-# WhatsApp Web Auth (SANGAT PENTING!)
-backend/.wwebjs_auth/
-.wwebjs_auth/
-
-# Backend specific
-backend/node_modules/
-backend/uploads/
-backend/.env
-
-# Database files (jika ada)
-*.db
-*.sqlite
-*.sqlite3
-
-# Build files
-build/
-
-# Cache directories
-.cache/
-.npm/
-.yarn/
 
 # Runtime data
 pids
@@ -62,15 +34,460 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
+*.lcov
+
+# nyc test coverage
 .nyc_output
 
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Rollup.js default build output
+dist/
+
+# Uncomment this if you have a build folder
+# build/
+
+# Vue.js Build Output
+dist/
+build/
+*/dist/
+*/build/
+
+# Uploads dan File Storage
+uploads/
+backend/uploads/
+src/uploads/
+public/uploads/
+storage/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+database.db
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
 # OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
 
 # Temporary files
-tmp/
+*.tmp
+*.temp
 temp/
+tmp/
 
-# Package manager lock files (optional, biasanya di-include)
-# package-lock.json
-# yarn.lock
+# Cache directories
+.cache/
+.npm/
+.eslintcache
+.stylelintcache
+
+# WhatsApp Web.js Session Files
+.wwebjs_auth/
+.wwebjs_cache/
+.wwebjs_session/
+
+# QR Code Files (jika tidak ingin di-commit)
+qr_codes/
+qr_*.png
+
+# Face API Models (jika ukuran besar)
+models/
+*.bin
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+*.cert
+
+# Configuration files with sensitive data
+config/production.json
+config/local.json
+
+# JWT Keys
+*.jwt
+jwt_secret.txt
+
+# API Keys dan Secrets
+secrets/
+.secrets
+api_keys.txt
+
+# Test files
+test-results/
+coverage/
+.nyc_output/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+
+# Jest
+jest.config.js
+coverage/
+
+# PM2
+ecosystem.config.js
+.pm2/
+
+# Docker
+Dockerfile.prod
+docker-compose.prod.yml
+.dockerignore
+
+# Kubernetes
+*.yaml
+*.yml
+k8s/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Serverless
+.serverless/
+
+# AWS
+.aws/
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Vercel
+.vercel
+
+# Netlify
+.netlify/
+
+# Heroku
+Procfile.dev
+
+# PHP (jika ada file PHP)
+*.php~
+vendor/
+
+# Python (jika ada script Python)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Ruby (jika ada file Ruby)
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+/tmp/
+
+# Java (jika ada file Java)
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Build tools
+.grunt/
+.gulp/
+.rollup.cache/
+
+# Storybook
+storybook-static/
+
+# Chromatic
+chromatic.log
+
+# Rush
+common/deploy/
+common/temp/
+common/autoinstallers/*/.npmrc
+**/.rush/
+
+# Lerna
+lerna-debug.log*
+
+# Yarn Berry
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Snowpack
+web_modules/
+
+# Vite
+*.local
+
+# TurboRepo
+.turbo/
+
+# Miscellaneous
+*.tgz
+*.tar.gz
+*.zip
+*.7z
+*.dmg
+*.iso
+*.msi
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+# Local development files
+.local
+.env.example.local
+development.log
+debug.log
+
+# Production files yang tidak boleh di-commit
+production.log
+error.log
+access.log
+
+# Backup dan archive
+*.bak
+*.backup
+*.old
+*.orig
+
+# Monitoring dan Analytics
+newrelic_agent.log
+.newrelic/
+
+# Sentry
+.sentryclirc
+
+# ESLint
+.eslintrc.local.js
+
+# Prettier
+.prettierrc.local
+
+# Stylelint
+.stylelintrc.local
+
+# Editor directories and files
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Custom project-specific files
+# Tambahkan file atau folder khusus proyek Anda di sini
+face_data/
+trained_models/
+dataset/

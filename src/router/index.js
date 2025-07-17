@@ -44,8 +44,8 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHashHistory(),
-  routes,
+  history: createWebHashHistory(),                
+  routes
 });
 
 // Route guard untuk proteksi halaman admin

@@ -119,24 +119,58 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(p, i) in filteredPengunjungList" :key="p.id">
-                  <td>{{ i + 1 }}</td>
-                  <td>{{ p.nama }}</td>
-                  <td>{{ p.hp }}</td>
-                  <td>{{ p.instansi }}</td>
-                  <td>{{ p.tujuan }}</td>
-                  <td>{{ p.keperluan }}</td>
-                  <td>
-                    <img v-if="p.foto" :src="`http://localhost:5000${p.foto}`" alt="Foto Pengunjung" class="foto-thumbnail" />
-                    <span v-else>-</span>
-                  </td>
-                  <td>{{ new Date(p.waktu).toLocaleString() }}</td>
-                  <td>
-                    <button @click="prepareEdit(p)" class="btn small">Edit</button>
-                    <button @click="hapus(p.id)" class="btn small danger">Hapus</button>
-                  </td>
-                </tr>
-              </tbody>
+    <tr v-for="(p, i) in filteredPengunjungList" :key="`pengunjung-${p.id}-${i}`">
+      <td>{{ i + 1 }}</td>
+      <td>{{ p.nama }}</td>
+      <td>{{ p.hp }}</td>
+      <td>{{ p.instansi }}</td>
+      <td>{{ p.tujuan }}</td>
+      <td>{{ p.keperluan }}</td>
+      <td>
+        <!-- ✅ BETTER FOTO HANDLING -->
+        <div class="foto-container">
+          <!-- Try different foto properties -->
+          <img 
+            v-if="p.foto_url && p.foto_url !== 'null'" 
+            :src="p.foto_url" 
+            alt="Foto Pengunjung" 
+            class="foto-thumbnail"
+            @error="handleImageError"
+            @load="console.log('Image loaded:', p.foto_url)"
+          />
+          <img 
+            v-else-if="p.foto && p.foto !== 'null'" 
+            :src="`http://localhost:5000/uploads/${p.foto}`" 
+            alt="Foto Pengunjung" 
+            class="foto-thumbnail"
+            @error="handleImageError"
+            @load="console.log('Image loaded:', p.foto)"
+          />
+          <img 
+            v-else-if="p.path_foto && p.path_foto !== 'null'" 
+            :src="`http://localhost:5000/uploads/${p.path_foto}`" 
+            alt="Foto Pengunjung" 
+            class="foto-thumbnail"
+            @error="handleImageError"
+            @load="console.log('Image loaded:', p.path_foto)"
+          />
+          <div v-else class="no-photo">
+            <svg width="24" height="24" fill="none" stroke="currentColor">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21,15 16,10 5,21"/>
+            </svg>
+            <small>No Photo</small>
+          </div>
+        </div>
+      </td>
+      <td>{{ new Date(p.waktu).toLocaleString() }}</td>
+      <td>
+        <button @click="prepareEdit(p)" class="btn small">Edit</button>
+        <button @click="hapus(p.id)" class="btn small danger">Hapus</button>
+      </td>
+    </tr>
+  </tbody>
             </table>
           </div>
         </section>
@@ -189,10 +223,28 @@
 <script setup>
 import axios from "axios";
 import { useToast } from "vue-toastification";
-import { h, ref, reactive, onMounted, watch, nextTick, computed } from "vue";
+import { h, ref, reactive, onMounted, watch, computed } from "vue";
 import { QrcodeStream } from "vue-qrcode-reader";
 import VisitorChart from "@/components/VisitorChart.vue";
 
+// ========================================
+// SIMPLE DEBOUNCE FUNCTION
+// ========================================
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// ========================================
+// REACTIVE DATA
+// ========================================
 const tab = ref("qr");
 const pengunjungList = ref([]);
 const filteredPengunjungList = ref([]);
@@ -208,7 +260,6 @@ const form = reactive({
 const selectedFile = ref(null);
 const isEdit = ref(false);
 const editId = ref(null);
-const formVisible = ref(false);
 const showScanner = ref(false);
 const manualId = ref("");
 const scannedVisitor = ref(null);
@@ -220,6 +271,9 @@ const monthlyReport = ref({
 
 const toast = useToast();
 
+// ========================================
+// COMPUTED
+// ========================================
 const pengunjungBulanIni = computed(() => {
   const now = new Date();
   const bulan = now.getMonth();
@@ -227,68 +281,14 @@ const pengunjungBulanIni = computed(() => {
   return pengunjungList.value.filter(p => {
     const tgl = new Date(p.waktu);
     return tgl.getMonth() === bulan && tgl.getFullYear() === tahun;
-  }).length;
+  }).length;   
 });
 
-// Contoh: Ambil data admin yang butuh token
-async function ambilDataAdmin() {
-  try {
-    const res = await axios.get("http://localhost:5000/api/admin/protected", {
-      headers: {
-        Authorization: localStorage.getItem("authToken")
-      }
-    });
-    // proses data admin di sini
-    console.log(res.data);
-  } catch (err) {
-    toast.error("Akses tidak diizinkan, silakan login ulang.");
-    window.location.href = "/admin";
-  }
-}
+// ========================================
+// MISSING FUNCTIONS - TAMBAHKAN INI
+// ========================================
 
-async function ambilData() {
-  try {
-    const res = await axios.get("http://localhost:5000/api/pengunjung");
-    pengunjungList.value = res.data;
-    filteredPengunjungList.value = res.data;
-  } catch (err) {
-    toast.error("Gagal memuat data pengunjung.");
-  }
-}
-
-async function ambilLaporanBulanan() {
-  try {
-    const res = await axios.get("http://localhost:5000/api/pengunjung/laporan-bulanan");
-    console.log("Laporan bulanan:", res.data);
-    monthlyReport.value.labels = res.data.map(d => d.bulan);
-    monthlyReport.value.data = res.data.map(d => d.jumlah);
-  } catch (err) {
-    console.error("Error laporan bulanan:", err);
-    toast.error("Gagal memuat laporan bulanan");
-  }
-}
-
-function filterPengunjung() {
-  let list = pengunjungList.value;
-  if (filterDate.value) {
-    const selectedDate = new Date(filterDate.value).toDateString();
-    list = list.filter((p) => {
-      const pengunjungDate = new Date(p.waktu).toDateString();
-      return pengunjungDate === selectedDate;
-    });
-  }
-  if (searchNama.value) {
-    list = list.filter((p) =>
-      p.nama.toLowerCase().includes(searchNama.value.toLowerCase())
-    );
-  }
-  filteredPengunjungList.value = list;
-}
-
-function onFileChange(e) {
-  selectedFile.value = e.target.files[0];
-}
-
+// ✅ ADD: resetForm function
 function resetForm() {
   form.nama = "";
   form.hp = "";
@@ -300,6 +300,7 @@ function resetForm() {
   editId.value = null;
 }
 
+// ✅ ADD: prepareEdit function
 function prepareEdit(p) {
   form.nama = p.nama;
   form.hp = p.hp;
@@ -309,6 +310,132 @@ function prepareEdit(p) {
   editId.value = p.id;
   isEdit.value = true;
   tab.value = "form";
+}
+
+// ✅ ADD: onFileChange function
+function onFileChange(e) {
+  selectedFile.value = e.target.files[0];
+  console.log("File selected:", selectedFile.value?.name);
+}
+
+// ✅ ADD: handleImageError function
+function handleImageError(event) {
+  console.log("Image load error:", event.target.src);
+  event.target.style.display = 'none';
+}
+
+// ✅ ADD: debouncedFilter
+const debouncedFilter = debounce(() => {
+  filterPengunjung();
+}, 300);
+
+// ========================================
+// EXISTING METHODS
+// ========================================
+async function ambilDataAdmin() {
+  try {
+    const res = await axios.get("http://localhost:5000/api/admin/protected", {
+      headers: {
+        Authorization: localStorage.getItem("authToken"),
+      }
+    });
+    console.log(res.data);
+  } catch (err) {
+    toast.error("Akses tidak diizinkan, silahkan login ulang.");
+    window.location.href = "/admin";
+  }
+}
+
+async function ambilData() {
+  try {
+    console.log("📤 Loading all data without pagination...");
+    
+    // ✅ Request ALL data by setting large limit
+    const res = await axios.get("http://localhost:5000/api/pengunjung?limit=1000&page=1");
+    
+    let dataList = [];
+    
+    if (res.data.data && Array.isArray(res.data.data)) {
+      dataList = res.data.data;
+      console.log(`✅ Pagination response: ${dataList.length} items`);
+    } else if (Array.isArray(res.data)) {
+      dataList = res.data;
+      console.log(`✅ Direct array response: ${dataList.length} items`);
+    } else {
+      console.warn("⚠️ Unexpected API response format:", res.data);
+      dataList = [];
+    }
+    
+    // Clear and set data
+    pengunjungList.value = [];
+    filteredPengunjungList.value = [];
+    
+    pengunjungList.value = dataList;
+    filteredPengunjungList.value = [...dataList];
+    
+    console.log(`✅ Total data loaded: ${dataList.length} pengunjung`);
+    console.log("🔍 Sample data:", dataList.slice(0, 2));
+    
+  } catch (err) {
+    console.error("❌ Error ambilData:", err);
+    toast.error("Gagal memuat data pengunjung.");
+    
+    pengunjungList.value = [];
+    filteredPengunjungList.value = [];
+  }
+}
+
+async function ambilLaporanBulanan() {
+  try {
+    const res = await axios.get("http://localhost:5000/api/pengunjung/laporan-bulanan");
+    
+    if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+      monthlyReport.value = {
+        labels: res.data.map(item => item.bulan_nama || item.bulan || "Unknown"),
+        data: res.data.map(item => item.jumlah || 0)
+      };
+    } else {
+      monthlyReport.value = {
+        labels: ["Belum Ada Data"],
+        data: [0]
+      };
+    }
+    
+    console.log("✅ Laporan bulanan berhasil diambil:", monthlyReport.value);
+  } catch (err) {
+    console.error("❌ Error ambilLaporanBulanan:", err);
+    
+    monthlyReport.value = {
+      labels: ["Error Loading"],
+      data: [0]
+    };
+    
+    toast.error("Gagal memuat laporan bulanan.");
+  }
+}
+
+function filterPengunjung() {
+  let list = [...pengunjungList.value];
+  
+  if (filterDate.value) {
+    const selectedDate = new Date(filterDate.value).toDateString();
+    list = list.filter((p) => {
+      const pengunjungDate = new Date(p.waktu).toDateString();
+      return pengunjungDate === selectedDate;
+    });
+  }
+  
+  if (searchNama.value && searchNama.value.trim()) {
+    const searchTerm = searchNama.value.toLowerCase().trim();
+    list = list.filter((p) =>
+      p.nama.toLowerCase().includes(searchTerm) ||
+      p.instansi.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  filteredPengunjungList.value = [...list];
+  
+  console.log(`✅ Filtered: ${list.length} dari ${pengunjungList.value.length} pengunjung`);
 }
 
 async function tambahPengunjung() {
@@ -324,14 +451,27 @@ async function tambahPengunjung() {
         instansi: form.instansi,
         tujuan: form.tujuan,
         keperluan: form.keperluan,
+      }, {
+        headers: {
+          Authorization: localStorage.getItem("authToken"),
+        }
       });
+      
       if (selectedFile.value) {
         const fd = new FormData();
         fd.append("foto", selectedFile.value);
-        fd.append("pengunjung_id", editId.value);
-        await axios.post("http://localhost:5000/api/upload", fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        try {
+          await axios.post(`http://localhost:5000/api/wajah/${editId.value}`, fd, {
+            headers: { 
+              "Content-Type": "multipart/form-data",
+              Authorization: localStorage.getItem("authToken"),
+            },
+          });
+          console.log("✅ Foto berhasil diupload");
+        } catch (photoErr) {
+          console.error("❌ Error upload foto:", photoErr);
+          toast.error("Data berhasil disimpan tapi foto gagal diupload");
+        }
       }
       toast.success("Data pengunjung berhasil diperbarui!");
     } else {
@@ -343,19 +483,29 @@ async function tambahPengunjung() {
         keperluan: form.keperluan,
       });
       const newId = res.data.id;
+      
       if (selectedFile.value) {
         const fd = new FormData();
         fd.append("foto", selectedFile.value);
-        fd.append("pengunjung_id", newId);
-        await axios.post("http://localhost:5000/api/upload", fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        try {
+          await axios.post(`http://localhost:5000/api/wajah/${newId}`, fd, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          console.log("✅ Foto berhasil diupload");
+        } catch (photoErr) {
+          console.error("❌ Error upload foto:", photoErr);
+          toast.error("Data berhasil disimpan tapi foto gagal diupload");
+        }
       }
       toast.success("Pengunjung berhasil ditambahkan!");
     }
+    
     resetForm();
-    ambilData();
+    await ambilData();
+    tab.value = "list";
+    
   } catch (err) {
+    console.error("❌ Error tambahPengunjung:", err);
     toast.error("Terjadi kesalahan saat menyimpan data.");
   }
 }
@@ -388,11 +538,25 @@ async function hapus(id) {
                 },
                 onClick: async () => {
                   try {
-                    await axios.delete(`http://localhost:5000/api/pengunjung/${id}`);
-                    ambilData();
+                    await axios.delete(`http://localhost:5000/api/pengunjung/${id}`, {
+                      headers: {
+                        Authorization: localStorage.getItem("authToken"),
+                      }
+                    });
+                    
+                    pengunjungList.value = pengunjungList.value.filter(p => p.id !== id);
+                    filteredPengunjungList.value = filteredPengunjungList.value.filter(p => p.id !== id);
+                    
                     toast.success("Pengunjung berhasil dihapus!");
+                    
+                    setTimeout(() => {
+                      ambilData();
+                    }, 500);
+                    
                   } catch (err) {
+                    console.error("❌ Error hapus:", err);
                     toast.error("Terjadi kesalahan saat menghapus data.");
+                    ambilData();
                   }
                 },
               },
@@ -494,7 +658,11 @@ async function confirmVisit(id) {
 
 async function revokeQR(id) {
   try {
-    await axios.patch(`http://localhost:5000/api/pengunjung/revoke/${id}`);
+    await axios.patch(`http://localhost:5000/api/pengunjung/deactivate/${id}`, {}, {
+      headers: {
+        Authorization: localStorage.getItem("authToken"),
+      }
+    });
     toast.success("QR code dinonaktifkan!", { timeout: 2000 });
     ambilData();
     if (scannedVisitor.value && scannedVisitor.value.id === id) {
@@ -510,18 +678,64 @@ async function revokeQR(id) {
   }
 }
 
+// ========================================
+// LIFECYCLE & WATCHERS
+// ========================================
 onMounted(async () => {
-  await ambilDataAdmin();
-  await ambilData();
-  await ambilLaporanBulanan();
+  try {
+    await ambilDataAdmin();
+    await ambilData();
+    await ambilLaporanBulanan();
+  } catch (error) {
+    console.error("❌ Error onMounted:", error);
+  }
 });
 
-watch([pengunjungList, filterDate, searchNama], () => {
-  filterPengunjung();
+watch([filterDate, searchNama], () => {
+  debouncedFilter();
 });
+
+watch(pengunjungList, () => {
+  filterPengunjung();
+}, { deep: true });
+
 </script>
 
 <style scoped>
+.foto-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+}
+
+.foto-thumbnail {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.no-photo {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  border-radius: 8px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.no-photo small {
+  font-size: 8px;
+  margin-top: 2px;
+}
+
 .dashboard-root {
   display: flex;
   min-height: 100vh;
