@@ -220,6 +220,7 @@
   </div>
 </template>
 
+
 <script setup>
 import axios from "axios";
 import { useToast } from "vue-toastification";
@@ -264,10 +265,16 @@ const showScanner = ref(false);
 const manualId = ref("");
 const scannedVisitor = ref(null);
 
+// ✅ IMPROVED: Better data structure for monthly report
 const monthlyReport = ref({
   labels: [],
   data: []
 });
+
+const laporanBulanan = ref([]); // Raw data from API
+const isLoadingReport = ref(false);
+const isLoadingData = ref(false);
+const isLoadingStats = ref(false);
 
 const stats = ref({
   totalPengunjung: 0,
@@ -293,13 +300,34 @@ const pengunjungBulanIni = computed(() => {
   }).length;   
 });
 
-// Defensive computed properties
+// ✅ IMPROVED: Defensive computed properties
 const safePengunjungList = computed(() => {
   return Array.isArray(pengunjungList.value) ? pengunjungList.value : [];
 });
 
 const safeFilteredList = computed(() => {
   return Array.isArray(filteredPengunjungList.value) ? filteredPengunjungList.value : [];
+});
+
+const safeLaporanBulanan = computed(() => {
+  return Array.isArray(laporanBulanan.value) ? laporanBulanan.value : [];
+});
+
+const safeMonthlyReport = computed(() => {
+  const report = monthlyReport.value;
+  return {
+    labels: Array.isArray(report.labels) ? report.labels : ["No Data"],
+    data: Array.isArray(report.data) ? report.data : [0]
+  };
+});
+
+const safeStats = computed(() => {
+  return {
+    totalPengunjung: stats.value.totalPengunjung || 0,
+    pengunjungHariIni: stats.value.pengunjungHariIni || 0,
+    pengunjungBulanIni: stats.value.pengunjungBulanIni || 0,
+    instansiTerbanyak: Array.isArray(stats.value.instansiTerbanyak) ? stats.value.instansiTerbanyak : []
+  };
 });
 
 // ========================================
@@ -343,57 +371,96 @@ function handleImageError(event) {
   }
 }
 
+function formatBulan(bulan) {
+  if (!bulan) return "Unknown";
+  
+  if (bulan.includes("-")) {
+    const [year, month] = bulan.split("-");
+    const namaBulan = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    const monthIndex = parseInt(month, 10) - 1;
+    return `${namaBulan[monthIndex] || "Unknown"} ${year}`;
+  }
+  
+  return bulan;
+}
+
+function calculatePercentage(jumlah) {
+  const total = safeLaporanBulanan.value.reduce((sum, item) => sum + (item.jumlah || 0), 0);
+  if (total === 0) return 0;
+  return ((jumlah / total) * 100).toFixed(1);
+}
+
 // ========================================
-// AUTH & TOKEN MANAGEMENT
+// AUTH & TOKEN MANAGEMENT - IMPROVED
 // ========================================
 function getAuthToken() {
-  return localStorage.getItem('token') || localStorage.getItem('authToken');
+  const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+  console.log('🔑 Current token:', token ? 'EXISTS' : 'MISSING');
+  return token;
 }
 
 function checkAuth() {
   const token = getAuthToken();
   if (!token) {
+    console.error('❌ No auth token found');
     toast.error("Session expired. Please login again.");
-    window.location.href = '/admin-login';
+    window.location.href = '/admin';
     return false;
   }
   return token;
 }
 
+function clearAuthData() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('authToken');
+  console.log('🧹 Auth data cleared');
+}
+
 // ========================================
-// API FUNCTIONS
+// API FUNCTIONS - IMPROVED ERROR HANDLING
 // ========================================
 async function ambilDataAdmin() {
   try {
     const token = checkAuth();
     if (!token) return;
 
+    console.log('🔍 Verifying admin access...');
     const res = await axios.get("http://localhost:5000/api/admin/protected", {
       headers: {
-        Authorization: token,
+        'Authorization': token,
       }
     });
     console.log("✅ Admin access verified:", res.data);
   } catch (err) {
     console.error("❌ Admin verification failed:", err);
-    toast.error("Akses tidak diizinkan, silahkan login ulang.");
-    localStorage.removeItem('token');
-    localStorage.removeItem('authToken');
-    window.location.href = "/admin-login";
+    
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      toast.error("Session expired. Please login again.");
+      clearAuthData();
+      window.location.href = "/admin";
+    } else {
+      toast.error("Connection error. Please check your network.");
+    }
   }
 }
 
 async function ambilData() {
   try {
     console.log("📤 Loading pengunjung data...");
+    isLoadingData.value = true;
     
     const token = checkAuth();
     if (!token) return;
     
     const res = await axios.get("http://localhost:5000/api/pengunjung?limit=1000&page=1", {
       headers: {
-        'Authorization': token
-      }
+        'Authorization': token,
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
     });
     
     console.log("🔍 Raw API response:", res.data);
@@ -402,11 +469,9 @@ async function ambilData() {
     
     // ✅ HANDLE MULTIPLE RESPONSE FORMATS
     if (res.data && res.data.data && Array.isArray(res.data.data)) {
-      // Format: { data: [...] }
       dataList = res.data.data;
       console.log(`✅ Structured response: ${dataList.length} items`);
     } else if (Array.isArray(res.data)) {
-      // Format: [...]
       dataList = res.data;
       console.log(`✅ Direct array response: ${dataList.length} items`);
     } else {
@@ -414,7 +479,6 @@ async function ambilData() {
       dataList = [];
     }
     
-    // ✅ ENSURE ARRAY BEFORE ASSIGNMENT
     pengunjungList.value = Array.isArray(dataList) ? dataList : [];
     filteredPengunjungList.value = Array.isArray(dataList) ? [...dataList] : [];
     
@@ -429,30 +493,35 @@ async function ambilData() {
     
     if (err.response?.status === 401 || err.response?.status === 403) {
       toast.error("Session expired. Please login again.");
-      localStorage.removeItem('token');
-      localStorage.removeItem('authToken');
-      window.location.href = '/admin-login';
+      clearAuthData();
+      window.location.href = '/admin';
+    } else if (err.code === 'ECONNABORTED') {
+      toast.error("Request timeout. Please try again.");
     } else {
-      toast.error("Gagal memuat data pengunjung.");
+      toast.error("Failed to load visitor data. Please check your connection.");
     }
     
-    // ✅ FALLBACK TO EMPTY ARRAYS
     pengunjungList.value = [];
     filteredPengunjungList.value = [];
+  } finally {
+    isLoadingData.value = false;
   }
 }
 
 async function ambilLaporanBulanan() {
   try {
     console.log("📊 Loading monthly report...");
+    isLoadingReport.value = true;
     
     const token = checkAuth();
     if (!token) return;
     
     const res = await axios.get("http://localhost:5000/api/pengunjung/laporan-bulanan", {
       headers: {
-        'Authorization': token
-      }
+        'Authorization': token,
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
     });
     
     console.log("🔍 Monthly report raw response:", res.data);
@@ -461,11 +530,9 @@ async function ambilLaporanBulanan() {
     
     // ✅ HANDLE MULTIPLE RESPONSE FORMATS
     if (res.data && res.data.data && Array.isArray(res.data.data)) {
-      // Format: { data: [...] }
       reportData = res.data.data;
       console.log(`✅ Structured monthly report: ${reportData.length} items`);
     } else if (Array.isArray(res.data)) {
-      // Format: [...]
       reportData = res.data;
       console.log(`✅ Direct array monthly report: ${reportData.length} items`);
     } else {
@@ -473,52 +540,72 @@ async function ambilLaporanBulanan() {
       reportData = [];
     }
     
-    // ✅ ENSURE ARRAY BEFORE ASSIGNMENT
+    // ✅ STORE RAW DATA
+    laporanBulanan.value = Array.isArray(reportData) ? reportData : [];
+    
+    // ✅ PREPARE CHART DATA
     if (Array.isArray(reportData) && reportData.length > 0) {
+      console.log("📊 Processing chart data...");
+      console.log("📊 Sample report item:", reportData[0]);
+      
       monthlyReport.value = {
-        labels: reportData.map(item => item.bulan_nama || item.bulan || "Unknown"),
-        data: reportData.map(item => item.jumlah || 0)
+        labels: reportData.map(item => {
+          return item.bulan_nama || item.bulan || item.month || "Unknown";
+        }),
+        data: reportData.map(item => {
+          return parseInt(item.jumlah) || parseInt(item.total) || parseInt(item.count) || 0;
+        })
       };
+      
+      console.log("📊 Final chart data:", monthlyReport.value);
     } else {
+      console.warn("⚠️ No data available for chart");
       monthlyReport.value = {
         labels: ["Belum Ada Data"],
         data: [0]
       };
     }
     
-    console.log(`✅ Monthly report loaded: ${monthlyReport.value.labels.length} months`);
+    console.log(`✅ Monthly report loaded: ${laporanBulanan.value.length} months`);
     
   } catch (err) {
     console.error("❌ Error loading monthly report:", err);
     
     if (err.response?.status === 401 || err.response?.status === 403) {
       toast.error("Session expired. Please login again.");
-      localStorage.removeItem('token');
-      localStorage.removeItem('authToken');
-      window.location.href = '/admin-login';
+      clearAuthData();
+      window.location.href = '/admin';
+    } else if (err.code === 'ECONNABORTED') {
+      toast.error("Request timeout. Please try again.");
     } else {
-      toast.error("Gagal memuat laporan bulanan.");
+      toast.error(`Failed to load monthly report: ${err.response?.data?.message || err.message}`);
     }
     
-    // ✅ FALLBACK TO EMPTY DATA
     monthlyReport.value = {
       labels: ["Error Loading"],
       data: [0]
     };
+    laporanBulanan.value = [];
+    
+  } finally {
+    isLoadingReport.value = false;
   }
 }
 
 async function ambilStats() {
   try {
     console.log("📈 Loading dashboard stats...");
+    isLoadingStats.value = true;
     
     const token = checkAuth();
     if (!token) return;
     
     const res = await axios.get("http://localhost:5000/api/admin/stats", {
       headers: {
-        'Authorization': token
-      }
+        'Authorization': token,
+        'Content-Type': 'application/json'
+      },
+      timeout: 15000
     });
     
     console.log("🔍 Stats raw response:", res.data);
@@ -527,11 +614,9 @@ async function ambilStats() {
     
     // ✅ HANDLE MULTIPLE RESPONSE FORMATS
     if (res.data && res.data.data && typeof res.data.data === 'object') {
-      // Format: { data: {...} }
       statsData = res.data.data;
       console.log(`✅ Structured stats response`);
     } else if (res.data && typeof res.data === 'object' && !res.data.message) {
-      // Format: {...} (direct stats object)
       statsData = res.data;
       console.log(`✅ Direct stats response`);
     } else {
@@ -559,20 +644,22 @@ async function ambilStats() {
     
     if (err.response?.status === 401 || err.response?.status === 403) {
       toast.error("Session expired. Please login again.");
-      localStorage.removeItem('token');
-      localStorage.removeItem('authToken');
-      window.location.href = '/admin-login';
+      clearAuthData();
+      window.location.href = '/admin';
+    } else if (err.code === 'ECONNABORTED') {
+      toast.error("Request timeout. Please try again.");
     } else {
-      toast.error("Gagal memuat statistik dashboard.");
+      toast.error(`Failed to load dashboard stats: ${err.response?.data?.message || err.message}`);
     }
     
-    // ✅ FALLBACK TO EMPTY STATS
     stats.value = {
       totalPengunjung: 0,
       pengunjungHariIni: 0,
       pengunjungBulanIni: 0,
       instansiTerbanyak: []
     };
+  } finally {
+    isLoadingStats.value = false;
   }
 }
 
@@ -909,10 +996,39 @@ async function revokeQR(id) {
 }
 
 // ========================================
+// DEBUGGING FUNCTIONS
+// ========================================
+function debugLaporanData() {
+  console.log("🐛 Debug Laporan Data:");
+  console.log("📊 Raw laporanBulanan:", laporanBulanan.value);
+  console.log("📊 Chart monthlyReport:", monthlyReport.value);
+  console.log("📊 Safe monthlyReport:", safeMonthlyReport.value);
+  console.log("📊 Loading states:", {
+    isLoadingReport: isLoadingReport.value,
+    isLoadingData: isLoadingData.value,
+    isLoadingStats: isLoadingStats.value
+  });
+}
+
+function refreshAllData() {
+  Promise.all([
+    ambilData(),
+    ambilLaporanBulanan(),
+    ambilStats()
+  ]).then(() => {
+    toast.success("All data refreshed successfully!");
+  }).catch((err) => {
+    console.error("❌ Error refreshing data:", err);
+    toast.error("Failed to refresh some data");
+  });
+}
+
+// ========================================
 // LIFECYCLE & WATCHERS
 // ========================================
 onMounted(async () => {
   console.log("🚀 AdminDashboard mounted, loading initial data...");
+  console.log("🌍 Environment:", import.meta.env.MODE);
   
   try {
     await ambilDataAdmin();
@@ -924,6 +1040,7 @@ onMounted(async () => {
     console.log("✅ All initial data loaded");
   } catch (error) {
     console.error("❌ Error onMounted:", error);
+    toast.error("Failed to load initial data");
   }
 });
 
@@ -935,8 +1052,22 @@ watch(pengunjungList, () => {
   filterPengunjung();
 }, { deep: true });
 
-</script>
+// ✅ NEW: Watch tab changes for lazy loading
+watch(tab, (newTab) => {
+  console.log(`🔄 Tab changed to: ${newTab}`);
+  
+  if (newTab === 'report' && (!laporanBulanan.value.length || !monthlyReport.value.labels.length)) {
+    console.log("📊 Loading report data for first time...");
+    ambilLaporanBulanan();
+  }
+  
+  if ((newTab === 'list' || newTab === 'report') && (!stats.value.totalPengunjung)) {
+    console.log("📈 Loading stats for first time...");
+    ambilStats();
+  }
+});
 
+</script>
 
 
 <style scoped>

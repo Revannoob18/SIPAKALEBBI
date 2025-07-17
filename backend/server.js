@@ -561,15 +561,20 @@ app.get("/api/pengunjung", authenticateToken, (req, res) => {
 // ENDPOINT: LAPORAN BULANAN PENGUNJUNG
 // ========================================
 app.get("/api/pengunjung/laporan-bulanan", authenticateToken, (req, res) => {
+  console.log(`📊 GET /api/pengunjung/laporan-bulanan - User: ${req.user.username}`);
+  
   const sql = `
     SELECT 
       DATE_FORMAT(waktu, '%Y-%m') AS bulan,
       DATE_FORMAT(waktu, '%M %Y') AS bulan_nama,
+      YEAR(waktu) as tahun,
+      MONTH(waktu) as bulan_angka,
       COUNT(*) AS jumlah
     FROM pengunjung
-    WHERE is_deleted = 0
-    GROUP BY bulan
-    ORDER BY bulan ASC
+    WHERE is_deleted = 0 
+      AND waktu >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+    GROUP BY YEAR(waktu), MONTH(waktu)
+    ORDER BY YEAR(waktu) ASC, MONTH(waktu) ASC
   `;
   
   db.query(sql, (err, results) => {
@@ -577,21 +582,34 @@ app.get("/api/pengunjung/laporan-bulanan", authenticateToken, (req, res) => {
       console.error("❌ Gagal mengambil laporan bulanan:", err);
       return res.status(500).json({ 
         message: "Gagal mengambil laporan bulanan.",
-        data: []
+        data: [],
+        error: err.message
       });
     }
     
-    console.log(`✅ Laporan bulanan diambil: ${results.length} data`);
+    console.log(`✅ Laporan bulanan retrieved: ${results.length} months`);
+    console.log("📊 Raw laporan data:", results);
     
-    // ✅ RETURN CONSISTENT FORMAT
+    // ✅ Format data untuk chart
+    const chartData = results.map(item => ({
+      bulan: item.bulan,           // "2025-01"
+      bulan_nama: item.bulan_nama, // "January 2025"
+      jumlah: item.jumlah,
+      tahun: item.tahun,
+      bulan_angka: item.bulan_angka
+    }));
+    
+    console.log("📊 Formatted chart data:", chartData);
+    
+    // ✅ CONSISTENT RESPONSE FORMAT
     res.json({
       message: "Laporan bulanan berhasil diambil.",
-      data: results || [],
-      total: results ? results.length : 0
+      data: chartData,
+      total: chartData.length,
+      success: true
     });
   });
 });
-
 
 // ========================================
 // ENDPOINT: UPDATE JUMLAH KUNJUNGAN
