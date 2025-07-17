@@ -228,7 +228,7 @@ import { QrcodeStream } from "vue-qrcode-reader";
 import VisitorChart from "@/components/VisitorChart.vue";
 
 // ========================================
-// SIMPLE DEBOUNCE FUNCTION
+// DEBOUNCE FUNCTION
 // ========================================
 function debounce(func, wait) {
   let timeout;
@@ -269,12 +269,21 @@ const monthlyReport = ref({
   data: []
 });
 
+const stats = ref({
+  totalPengunjung: 0,
+  pengunjungHariIni: 0,
+  pengunjungBulanIni: 0,
+  instansiTerbanyak: []
+});
+
 const toast = useToast();
 
 // ========================================
-// COMPUTED
+// COMPUTED PROPERTIES
 // ========================================
 const pengunjungBulanIni = computed(() => {
+  if (!Array.isArray(pengunjungList.value)) return 0;
+  
   const now = new Date();
   const bulan = now.getMonth();
   const tahun = now.getFullYear();
@@ -284,11 +293,18 @@ const pengunjungBulanIni = computed(() => {
   }).length;   
 });
 
-// ========================================
-// MISSING FUNCTIONS - TAMBAHKAN INI
-// ========================================
+// Defensive computed properties
+const safePengunjungList = computed(() => {
+  return Array.isArray(pengunjungList.value) ? pengunjungList.value : [];
+});
 
-// ✅ ADD: resetForm function
+const safeFilteredList = computed(() => {
+  return Array.isArray(filteredPengunjungList.value) ? filteredPengunjungList.value : [];
+});
+
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
 function resetForm() {
   form.nama = "";
   form.hp = "";
@@ -300,7 +316,6 @@ function resetForm() {
   editId.value = null;
 }
 
-// ✅ ADD: prepareEdit function
 function prepareEdit(p) {
   form.nama = p.nama;
   form.hp = p.hp;
@@ -312,53 +327,86 @@ function prepareEdit(p) {
   tab.value = "form";
 }
 
-// ✅ ADD: onFileChange function
 function onFileChange(e) {
   selectedFile.value = e.target.files[0];
   console.log("File selected:", selectedFile.value?.name);
 }
 
-// ✅ ADD: handleImageError function
 function handleImageError(event) {
   console.log("Image load error:", event.target.src);
   event.target.style.display = 'none';
+  // Show fallback
+  const container = event.target.parentElement;
+  const fallback = container.querySelector('.no-photo');
+  if (fallback) {
+    fallback.style.display = 'flex';
+  }
 }
 
-// ✅ ADD: debouncedFilter
-const debouncedFilter = debounce(() => {
-  filterPengunjung();
-}, 300);
+// ========================================
+// AUTH & TOKEN MANAGEMENT
+// ========================================
+function getAuthToken() {
+  return localStorage.getItem('token') || localStorage.getItem('authToken');
+}
+
+function checkAuth() {
+  const token = getAuthToken();
+  if (!token) {
+    toast.error("Session expired. Please login again.");
+    window.location.href = '/admin-login';
+    return false;
+  }
+  return token;
+}
 
 // ========================================
-// EXISTING METHODS
+// API FUNCTIONS
 // ========================================
 async function ambilDataAdmin() {
   try {
+    const token = checkAuth();
+    if (!token) return;
+
     const res = await axios.get("http://localhost:5000/api/admin/protected", {
       headers: {
-        Authorization: localStorage.getItem("authToken"),
+        Authorization: token,
       }
     });
-    console.log(res.data);
+    console.log("✅ Admin access verified:", res.data);
   } catch (err) {
+    console.error("❌ Admin verification failed:", err);
     toast.error("Akses tidak diizinkan, silahkan login ulang.");
-    window.location.href = "/admin";
+    localStorage.removeItem('token');
+    localStorage.removeItem('authToken');
+    window.location.href = "/admin-login";
   }
 }
 
 async function ambilData() {
   try {
-    console.log("📤 Loading all data without pagination...");
+    console.log("📤 Loading pengunjung data...");
     
-    // ✅ Request ALL data by setting large limit
-    const res = await axios.get("http://localhost:5000/api/pengunjung?limit=1000&page=1");
+    const token = checkAuth();
+    if (!token) return;
+    
+    const res = await axios.get("http://localhost:5000/api/pengunjung?limit=1000&page=1", {
+      headers: {
+        'Authorization': token
+      }
+    });
+    
+    console.log("🔍 Raw API response:", res.data);
     
     let dataList = [];
     
-    if (res.data.data && Array.isArray(res.data.data)) {
+    // ✅ HANDLE MULTIPLE RESPONSE FORMATS
+    if (res.data && res.data.data && Array.isArray(res.data.data)) {
+      // Format: { data: [...] }
       dataList = res.data.data;
-      console.log(`✅ Pagination response: ${dataList.length} items`);
+      console.log(`✅ Structured response: ${dataList.length} items`);
     } else if (Array.isArray(res.data)) {
+      // Format: [...]
       dataList = res.data;
       console.log(`✅ Direct array response: ${dataList.length} items`);
     } else {
@@ -366,20 +414,29 @@ async function ambilData() {
       dataList = [];
     }
     
-    // Clear and set data
-    pengunjungList.value = [];
-    filteredPengunjungList.value = [];
+    // ✅ ENSURE ARRAY BEFORE ASSIGNMENT
+    pengunjungList.value = Array.isArray(dataList) ? dataList : [];
+    filteredPengunjungList.value = Array.isArray(dataList) ? [...dataList] : [];
     
-    pengunjungList.value = dataList;
-    filteredPengunjungList.value = [...dataList];
+    console.log(`✅ Total pengunjung loaded: ${pengunjungList.value.length}`);
     
-    console.log(`✅ Total data loaded: ${dataList.length} pengunjung`);
-    console.log("🔍 Sample data:", dataList.slice(0, 2));
+    if (pengunjungList.value.length > 0) {
+      console.log("🔍 Sample data:", pengunjungList.value[0]);
+    }
     
   } catch (err) {
-    console.error("❌ Error ambilData:", err);
-    toast.error("Gagal memuat data pengunjung.");
+    console.error("❌ Error loading pengunjung data:", err);
     
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      toast.error("Session expired. Please login again.");
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+      window.location.href = '/admin-login';
+    } else {
+      toast.error("Gagal memuat data pengunjung.");
+    }
+    
+    // ✅ FALLBACK TO EMPTY ARRAYS
     pengunjungList.value = [];
     filteredPengunjungList.value = [];
   }
@@ -387,12 +444,40 @@ async function ambilData() {
 
 async function ambilLaporanBulanan() {
   try {
-    const res = await axios.get("http://localhost:5000/api/pengunjung/laporan-bulanan");
+    console.log("📊 Loading monthly report...");
     
-    if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+    const token = checkAuth();
+    if (!token) return;
+    
+    const res = await axios.get("http://localhost:5000/api/pengunjung/laporan-bulanan", {
+      headers: {
+        'Authorization': token
+      }
+    });
+    
+    console.log("🔍 Monthly report raw response:", res.data);
+    
+    let reportData = [];
+    
+    // ✅ HANDLE MULTIPLE RESPONSE FORMATS
+    if (res.data && res.data.data && Array.isArray(res.data.data)) {
+      // Format: { data: [...] }
+      reportData = res.data.data;
+      console.log(`✅ Structured monthly report: ${reportData.length} items`);
+    } else if (Array.isArray(res.data)) {
+      // Format: [...]
+      reportData = res.data;
+      console.log(`✅ Direct array monthly report: ${reportData.length} items`);
+    } else {
+      console.warn("⚠️ Unexpected monthly report format:", res.data);
+      reportData = [];
+    }
+    
+    // ✅ ENSURE ARRAY BEFORE ASSIGNMENT
+    if (Array.isArray(reportData) && reportData.length > 0) {
       monthlyReport.value = {
-        labels: res.data.map(item => item.bulan_nama || item.bulan || "Unknown"),
-        data: res.data.map(item => item.jumlah || 0)
+        labels: reportData.map(item => item.bulan_nama || item.bulan || "Unknown"),
+        data: reportData.map(item => item.jumlah || 0)
       };
     } else {
       monthlyReport.value = {
@@ -401,20 +486,105 @@ async function ambilLaporanBulanan() {
       };
     }
     
-    console.log("✅ Laporan bulanan berhasil diambil:", monthlyReport.value);
-  } catch (err) {
-    console.error("❌ Error ambilLaporanBulanan:", err);
+    console.log(`✅ Monthly report loaded: ${monthlyReport.value.labels.length} months`);
     
+  } catch (err) {
+    console.error("❌ Error loading monthly report:", err);
+    
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      toast.error("Session expired. Please login again.");
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+      window.location.href = '/admin-login';
+    } else {
+      toast.error("Gagal memuat laporan bulanan.");
+    }
+    
+    // ✅ FALLBACK TO EMPTY DATA
     monthlyReport.value = {
       labels: ["Error Loading"],
       data: [0]
     };
-    
-    toast.error("Gagal memuat laporan bulanan.");
   }
 }
 
+async function ambilStats() {
+  try {
+    console.log("📈 Loading dashboard stats...");
+    
+    const token = checkAuth();
+    if (!token) return;
+    
+    const res = await axios.get("http://localhost:5000/api/admin/stats", {
+      headers: {
+        'Authorization': token
+      }
+    });
+    
+    console.log("🔍 Stats raw response:", res.data);
+    
+    let statsData = {};
+    
+    // ✅ HANDLE MULTIPLE RESPONSE FORMATS
+    if (res.data && res.data.data && typeof res.data.data === 'object') {
+      // Format: { data: {...} }
+      statsData = res.data.data;
+      console.log(`✅ Structured stats response`);
+    } else if (res.data && typeof res.data === 'object' && !res.data.message) {
+      // Format: {...} (direct stats object)
+      statsData = res.data;
+      console.log(`✅ Direct stats response`);
+    } else {
+      console.warn("⚠️ Unexpected stats format:", res.data);
+      statsData = {
+        totalPengunjung: 0,
+        pengunjungHariIni: 0,
+        pengunjungBulanIni: 0,
+        instansiTerbanyak: []
+      };
+    }
+    
+    // ✅ ENSURE VALID STATS OBJECT
+    stats.value = {
+      totalPengunjung: statsData.totalPengunjung || 0,
+      pengunjungHariIni: statsData.pengunjungHariIni || 0,
+      pengunjungBulanIni: statsData.pengunjungBulanIni || 0,
+      instansiTerbanyak: Array.isArray(statsData.instansiTerbanyak) ? statsData.instansiTerbanyak : []
+    };
+    
+    console.log("✅ Dashboard stats loaded:", stats.value);
+    
+  } catch (err) {
+    console.error("❌ Error loading dashboard stats:", err);
+    
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      toast.error("Session expired. Please login again.");
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+      window.location.href = '/admin-login';
+    } else {
+      toast.error("Gagal memuat statistik dashboard.");
+    }
+    
+    // ✅ FALLBACK TO EMPTY STATS
+    stats.value = {
+      totalPengunjung: 0,
+      pengunjungHariIni: 0,
+      pengunjungBulanIni: 0,
+      instansiTerbanyak: []
+    };
+  }
+}
+
+// ========================================
+// FILTER & SEARCH FUNCTIONS
+// ========================================
 function filterPengunjung() {
+  if (!Array.isArray(pengunjungList.value)) {
+    filteredPengunjungList.value = [];
+    return;
+  }
+  
   let list = [...pengunjungList.value];
   
   if (filterDate.value) {
@@ -428,8 +598,9 @@ function filterPengunjung() {
   if (searchNama.value && searchNama.value.trim()) {
     const searchTerm = searchNama.value.toLowerCase().trim();
     list = list.filter((p) =>
-      p.nama.toLowerCase().includes(searchTerm) ||
-      p.instansi.toLowerCase().includes(searchTerm)
+      (p.nama && p.nama.toLowerCase().includes(searchTerm)) ||
+      (p.instansi && p.instansi.toLowerCase().includes(searchTerm)) ||
+      (p.hp && p.hp.includes(searchTerm))
     );
   }
   
@@ -438,8 +609,18 @@ function filterPengunjung() {
   console.log(`✅ Filtered: ${list.length} dari ${pengunjungList.value.length} pengunjung`);
 }
 
+const debouncedFilter = debounce(() => {
+  filterPengunjung();
+}, 300);
+
+// ========================================
+// CRUD FUNCTIONS
+// ========================================
 async function tambahPengunjung() {
   try {
+    const token = checkAuth();
+    if (!token) return;
+
     if (isEdit.value) {
       if (!editId.value) {
         toast.error("ID pengunjung tidak valid.");
@@ -453,7 +634,7 @@ async function tambahPengunjung() {
         keperluan: form.keperluan,
       }, {
         headers: {
-          Authorization: localStorage.getItem("authToken"),
+          Authorization: token,
         }
       });
       
@@ -464,7 +645,7 @@ async function tambahPengunjung() {
           await axios.post(`http://localhost:5000/api/wajah/${editId.value}`, fd, {
             headers: { 
               "Content-Type": "multipart/form-data",
-              Authorization: localStorage.getItem("authToken"),
+              Authorization: token,
             },
           });
           console.log("✅ Foto berhasil diupload");
@@ -538,9 +719,12 @@ async function hapus(id) {
                 },
                 onClick: async () => {
                   try {
+                    const token = checkAuth();
+                    if (!token) return;
+
                     await axios.delete(`http://localhost:5000/api/pengunjung/${id}`, {
                       headers: {
-                        Authorization: localStorage.getItem("authToken"),
+                        Authorization: token,
                       }
                     });
                     
@@ -588,6 +772,9 @@ async function hapus(id) {
   );
 }
 
+// ========================================
+// QR & VERIFICATION FUNCTIONS
+// ========================================
 async function onInit(promise) {
   try {
     await promise;
@@ -600,22 +787,60 @@ async function onInit(promise) {
 
 async function onDecode(result) {
   try {
+    let qrData = result;
+    
+    // Try to parse as JSON first
+    try {
+      qrData = JSON.parse(result);
+      if (qrData.id) {
+        await verifyById(qrData.id);
+        return;
+      }
+    } catch (parseErr) {
+      // Not JSON, try other formats
+    }
+    
+    // Extract ID from URL or direct number
     let id = result;
     if (typeof result === "string" && result.includes("/")) {
       id = result.split("/").pop();
     }
+    
     if (!/^\d+$/.test(id)) {
       throw new Error("QR code tidak valid! (ID tidak ditemukan)");
     }
-    const response = await axios.get(`http://localhost:5000/api/pengunjung/${id}`);
-    scannedVisitor.value = response.data;
-    showScanner.value = false;
-    toast.success("Pengunjung ditemukan!", { timeout: 2000 });
+    
+    await verifyById(id);
+    
   } catch (error) {
     toast.error(
-      `Gagal memverifikasi QR code: ${
-        error.response?.data?.message || error.message
-      }`,
+      `Gagal memverifikasi QR code: ${error.message}`,
+      { timeout: 3000 }
+    );
+  }
+}
+
+async function verifyById(id) {
+  try {
+    const token = checkAuth();
+    if (!token) return;
+
+    const response = await axios.post(`http://localhost:5000/api/admin/verify-id`, {
+      pengunjungId: id
+    }, {
+      headers: {
+        'Authorization': token
+      }
+    });
+
+    scannedVisitor.value = response.data.pengunjung;
+    showScanner.value = false;
+    toast.success(`Pengunjung ${response.data.pengunjung.nama} berhasil diverifikasi!`, { timeout: 2000 });
+
+  } catch (error) {
+    console.error("❌ Verification error:", error);
+    toast.error(
+      `Gagal memverifikasi ID: ${error.response?.data?.message || error.message}`,
       { timeout: 3000 }
     );
   }
@@ -626,26 +851,28 @@ async function verifyManual() {
     toast.error("Masukkan ID pengunjung!", { timeout: 2000 });
     return;
   }
-  try {
-    const response = await axios.get(`http://localhost:5000/api/pengunjung/${manualId.value}`);
-    scannedVisitor.value = response.data;
-    toast.success("Pengunjung ditemukan!", { timeout: 2000 });
-    manualId.value = "";
-  } catch (error) {
-    toast.error(
-      `Gagal memverifikasi ID: ${
-        error.response?.data?.message || error.message
-      }`,
-      { timeout: 3000 }
-    );
-  }
+  
+  await verifyById(manualId.value);
+  manualId.value = "";
 }
 
 async function confirmVisit(id) {
   try {
-    await axios.patch(`http://localhost:5000/api/pengunjung/visit/${id}`);
+    const token = checkAuth();
+    if (!token) return;
+
+    await axios.post(`http://localhost:5000/api/admin/confirm-visit`, {
+      pengunjungId: id,
+      notes: "Confirmed via admin dashboard"
+    }, {
+      headers: {
+        Authorization: token,
+      }
+    });
+    
     toast.success("Kunjungan dikonfirmasi!", { timeout: 2000 });
-    ambilData();
+    await ambilData();
+    
   } catch (error) {
     toast.error(
       `Gagal mengkonfirmasi kunjungan: ${
@@ -658,13 +885,16 @@ async function confirmVisit(id) {
 
 async function revokeQR(id) {
   try {
+    const token = checkAuth();
+    if (!token) return;
+
     await axios.patch(`http://localhost:5000/api/pengunjung/deactivate/${id}`, {}, {
       headers: {
-        Authorization: localStorage.getItem("authToken"),
+        Authorization: token,
       }
     });
     toast.success("QR code dinonaktifkan!", { timeout: 2000 });
-    ambilData();
+    await ambilData();
     if (scannedVisitor.value && scannedVisitor.value.id === id) {
       scannedVisitor.value.is_active = false;
     }
@@ -682,10 +912,16 @@ async function revokeQR(id) {
 // LIFECYCLE & WATCHERS
 // ========================================
 onMounted(async () => {
+  console.log("🚀 AdminDashboard mounted, loading initial data...");
+  
   try {
     await ambilDataAdmin();
-    await ambilData();
-    await ambilLaporanBulanan();
+    await Promise.all([
+      ambilData(),
+      ambilLaporanBulanan(),
+      ambilStats()
+    ]);
+    console.log("✅ All initial data loaded");
   } catch (error) {
     console.error("❌ Error onMounted:", error);
   }
@@ -700,6 +936,8 @@ watch(pengunjungList, () => {
 }, { deep: true });
 
 </script>
+
+
 
 <style scoped>
 .foto-container {

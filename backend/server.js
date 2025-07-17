@@ -473,7 +473,7 @@ SMAN 1 Bone`;
 // ========================================
 // ENDPOINT: GET PENGUNJUNG (dengan pagination dan foto)
 // ========================================
-app.get("/api/pengunjung", (req, res) => {
+app.get("/api/pengunjung", authenticateToken, (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 1000;
   const offset = (page - 1) * limit;
@@ -489,16 +489,16 @@ app.get("/api/pengunjung", (req, res) => {
 
   console.log(`🔍 GET /api/pengunjung - Page: ${page}, Limit: ${limit}, Search: "${search}"`);
 
-  const countSql = `
-    SELECT COUNT(*) as total 
-    FROM pengunjung p 
-    ${whereClause}
-  `;
+  const countSql = `SELECT COUNT(*) as total FROM pengunjung p ${whereClause}`;
 
   db.query(countSql, params, (countErr, countResult) => {
     if (countErr) {
       console.error("❌ Gagal menghitung data:", countErr);
-      return res.status(500).json({ message: "Gagal mengambil data." });
+      return res.status(500).json({ 
+        message: "Gagal mengambil data.",
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0 }
+      });
     }
 
     const total = countResult[0].total;
@@ -531,13 +531,19 @@ app.get("/api/pengunjung", (req, res) => {
     db.query(sql, [...params, limit, offset], (err, results) => {
       if (err) {
         console.error("❌ Gagal mengambil data:", err);
-        return res.status(500).json({ message: "Gagal mengambil data." });
+        return res.status(500).json({ 
+          message: "Gagal mengambil data.",
+          data: [],
+          pagination: { page, limit, total: 0, totalPages: 0 }
+        });
       }
 
       console.log(`✅ Returning ${results.length} records from ${total} total`);
 
+      // ✅ CONSISTENT RESPONSE FORMAT
       res.json({
-        data: results,
+        message: "Data pengunjung berhasil diambil.",
+        data: results || [],
         pagination: {
           page: page,
           limit: limit,
@@ -895,6 +901,69 @@ app.get("/api/admin/stats", authenticateToken, (req, res) => {
         // ❌ PROBLEM: No consistent response wrapper
         res.json(stats);
       }
+    });
+  });
+});
+
+// ========================================
+// MANUAL ID VERIFICATION ENDPOINT (ADD AFTER STATS)
+// ========================================
+app.post("/api/admin/verify-id", authenticateToken, (req, res) => {
+  const { pengunjungId } = req.body;
+
+  if (!pengunjungId) {
+    return res.status(400).json({ 
+      message: "ID Verifikasi wajib diisi.",
+      required: ["pengunjungId"]
+    });
+  }
+
+  console.log(`🔍 Manual verification for ID: ${pengunjungId}`);
+
+  const sql = `
+    SELECT 
+      p.*,
+      w.file_foto AS foto,
+      q.file_qr AS qr_code,
+      CASE 
+        WHEN w.file_foto IS NOT NULL THEN CONCAT('${req.protocol}://${req.get('host')}/uploads/', w.file_foto)
+        ELSE NULL 
+      END AS foto_url,
+      CASE 
+        WHEN q.file_qr IS NOT NULL THEN CONCAT('${req.protocol}://${req.get('host')}/uploads/', q.file_qr)
+        ELSE NULL 
+      END AS qr_url
+    FROM pengunjung p
+    LEFT JOIN wajah_pengunjung w ON p.id = w.pengunjung_id AND w.is_deleted = 0
+    LEFT JOIN qr_pengunjung q ON p.id = q.pengunjung_id AND q.is_deleted = 0
+    WHERE p.id = ? AND p.is_deleted = 0
+  `;
+
+  db.query(sql, [pengunjungId], (err, results) => {
+    if (err) {
+      console.error("❌ Error verifying ID:", err);
+      return res.status(500).json({ 
+        message: "Gagal memverifikasi ID.",
+        error: err.message 
+      });
+    }
+
+    if (results.length === 0) {
+      console.log(`❌ ID ${pengunjungId} not found`);
+      return res.status(404).json({ 
+        message: "ID Verifikasi tidak ditemukan.",
+        id: pengunjungId 
+      });
+    }
+
+    const pengunjung = results[0];
+    console.log(`✅ ID ${pengunjungId} verified for: ${pengunjung.nama}`);
+
+    res.json({
+      message: "ID Verifikasi berhasil diverifikasi.",
+      verified: true,
+      pengunjung: pengunjung,
+      verification_time: new Date().toISOString()
     });
   });
 });
