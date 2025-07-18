@@ -943,32 +943,57 @@ async function verifyManual() {
   manualId.value = "";
 }
 
+// ========================================
+// QR & VERIFICATION FUNCTIONS - UPDATE YANG INI
+// ========================================
 async function confirmVisit(id) {
   try {
+    console.log(`📝 Confirming visit for ID: ${id}`);
+    
     const token = checkAuth();
     if (!token) return;
 
-    await axios.post(`http://localhost:5000/api/admin/confirm-visit`, {
-      pengunjungId: id,
-      notes: "Confirmed via admin dashboard"
-    }, {
+    // ✅ GUNAKAN ENDPOINT YANG SUDAH ADA: /api/pengunjung/visit/:id
+    const response = await axios.patch(`http://localhost:5000/api/pengunjung/visit/${id}`, {}, {
       headers: {
-        Authorization: token,
-      }
+        'Authorization': token,
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
     });
     
-    toast.success("Kunjungan dikonfirmasi!", { timeout: 2000 });
+    console.log("✅ Visit confirmation response:", response.data);
+    
+    // ✅ UPDATE scannedVisitor jika ada
+    if (scannedVisitor.value && scannedVisitor.value.id === id) {
+      scannedVisitor.value.jumlah_kunjungan = (scannedVisitor.value.jumlah_kunjungan || 0) + 1;
+    }
+    
+    toast.success("Kunjungan berhasil dikonfirmasi!", { timeout: 3000 });
+    
+    // ✅ REFRESH DATA
     await ambilData();
     
   } catch (error) {
-    toast.error(
-      `Gagal mengkonfirmasi kunjungan: ${
-        error.response?.data?.message || error.message
-      }`,
-      { timeout: 3000 }
-    );
+    console.error("❌ Error confirming visit:", error);
+    
+    let errorMessage = "Gagal mengkonfirmasi kunjungan.";
+    
+    if (error.response?.status === 404) {
+      errorMessage = "Pengunjung tidak ditemukan.";
+    } else if (error.response?.status === 401 || error.response?.status === 403) {
+      errorMessage = "Session expired. Please login again.";
+      clearAuthData();
+      window.location.href = '/admin';
+      return;
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+    
+    toast.error(errorMessage, { timeout: 4000 });
   }
 }
+
 
 async function revokeQR(id) {
   try {
